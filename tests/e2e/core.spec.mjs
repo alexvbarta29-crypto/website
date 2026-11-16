@@ -475,6 +475,7 @@ test("every client route in the manifests, as owner and tech, at both phone size
     "/inbox/:id": seeded.comms.tech, "/campaigns/:id": seeded.comms.campaign,
     "/invoices/:id": seeded.money.invoices.open, "/autopay/:id": seeded.money.autopay,
     "/signs/:id": sign.data.code.id,
+    "/settings/estimate-templates/:id": (await get("/quote-templates"))[0].id,
   };
   await o.close();
   const fill = (path) => path.replace(/:([a-z_]+)/g, (m, name) => (name === "contact" ? seeded.contacts.lead : ids[path] && typeof ids[path] === "object" ? ids[path][name] : ids[path] ?? null) ?? m);

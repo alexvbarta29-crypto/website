@@ -200,3 +200,121 @@ test("quotes: not for a tech", async () => {
     await p.clean();
   } finally { await p.close(); }
 });
+
+// Estimate templates and the automatic lights mockup (the owner, Nov 16).
+// Street View and Claude are mocked in the browser (the app's own two
+// routes): the photo is a synthetic house drawn on a canvas; the lines are
+// what the model would answer. The bulbs, the dusk look and Save are real.
+async function syntheticHouse(page) {
+  const url = await page.evaluate(() => {
+    const c = document.createElement("canvas");
+    c.width = 640; c.height = 480;
+    const x = c.getContext("2d");
+    const sky = x.createLinearGradient(0, 0, 0, 300); sky.addColorStop(0, "#8fb3d9"); sky.addColorStop(1, "#d9e4ee");
+    x.fillStyle = sky; x.fillRect(0, 0, 640, 480);
+    x.fillStyle = "#6b8f4e"; x.fillRect(0, 380, 640, 100);
+    x.fillStyle = "#c9b79c"; x.fillRect(110, 250, 420, 140);
+    x.fillStyle = "#3d3a38"; x.beginPath(); x.moveTo(90, 252); x.lineTo(320, 130); x.lineTo(550, 252); x.closePath(); x.fill();
+    x.fillStyle = "#f4f1ea"; x.fillRect(96, 250, 448, 7);
+    x.fillStyle = "#5d7d8f"; for (const wx of [150, 250, 390, 460]) x.fillRect(wx, 285, 46, 56);
+    x.fillStyle = "#7a4b2a"; x.fillRect(300, 300, 44, 90);
+    x.fillStyle = "#2f5d34"; for (const [bx, r] of [[170, 26], [230, 22], [420, 26], [480, 22]]) { x.beginPath(); x.arc(bx, 382, r, 0, Math.PI * 2); x.fill(); }
+    return c.toDataURL("image/jpeg", 0.9);
+  });
+  return Buffer.from(url.split(",")[1], "base64");
+}
+const MOCK_LINES = [
+  { kind: "eave", points: [[96, 252], [544, 252]] },
+  { kind: "rake", points: [[96, 252], [320, 132], [544, 252]] },
+  { kind: "bush", points: [[146, 380], [170, 356], [196, 380], [170, 404]] },
+  { kind: "bush", points: [[396, 380], [420, 356], [446, 380], [420, 404]] },
+];
+async function mockMockup(page, propertyId, jpeg, { source = "claude" } = {}) {
+  const calls = { photo: 0, lines: 0 };
+  await page.route("**/api/crm/lights-mockup/photo", (r) => { calls.photo += 1; return r.fulfill({ json: { ok: true, data: { photo: { url: `/api/crm/lights-mockup/${propertyId}/photo.jpg?v=e2e`, w: 640, h: 480, at: "e2e" } } } }); });
+  await page.route(`**/api/crm/lights-mockup/${propertyId}/photo.jpg*`, (r) => r.fulfill({ body: jpeg, contentType: "image/jpeg" }));
+  await page.route("**/api/crm/lights-mockup/lines", (r) => { calls.lines += 1; return r.fulfill({ json: { ok: true, data: source === "claude" ? { source, lines: MOCK_LINES, w: 640, h: 480 } : { source: "none", reason: "no_key", lines: [], w: 640, h: 480 } } }); });
+  return calls;
+}
+const bulbsDrawn = (f) => f.waitForFunction(() => { const c = document.querySelector(".sheet.on [data-mk-canvas]"); return c && !c.hidden && Number(c.dataset.bulbs) > 40 ? Number(c.dataset.bulbs) : false; }, null, { timeout: 10000 }).then((h) => h.jsonValue());
+
+for (const device of ["iphone13", "iphonese"]) {
+  test(`quotes (${device}): Start from a template, then Mockup makes the lights mockup of the house`, async () => {
+    const { p, page, f } = await open("olive", device);
+    try {
+      const jpeg = await syntheticHouse(page);
+      const calls = await mockMockup(page, seeded.lightsHome.property, jpeg);
+      await goTo(f, `/quotes/new/${seeded.lightsHome.contact}`);
+      await f.waitForSelector("#qt-new [data-cf-tpl]");
+      assert.equal(await f.$("#qt-new [data-cf-mockup-auto]"), null, "no Mockup chip before lights work");
+      await f.click("#qt-new [data-cf-tpl]");
+      await sheetUp(f, /Start from a template/);
+      await f.waitForFunction(() => document.querySelectorAll(".sheet.on [data-pick]").length >= 10, null, { timeout: 5000 });
+      const names = await f.$$eval(".sheet.on [data-pick] .nm", (els) => els.map((e) => e.textContent));
+      assert.ok(names.includes("Exterior windows") && names.includes("Christmas lights: roofline") && names.includes("Lights takedown + storage"), names.join(", "));
+      assert.match(await f.textContent(".sheet.on"), /Outside glass, sills and frames/, "each with its one line");
+      assert.deepEqual(await screenProblems(f), [], "the template picker passes the phone checks");
+      await shot(page, `quotes-template-picker-${device}`);
+      for (const b of await f.$$(".sheet.on [data-pick]")) {
+        const text = await b.textContent();
+        if (text.includes("Christmas lights: roofline") && !text.includes("bushes")) { await b.click(); break; }
+      }
+      await f.waitForSelector("#qt-new [data-cf-mockup-auto]", { timeout: 5000 });
+      const form = await f.textContent("#qt-new");
+      assert.match(form, /Christmas lights: roofline/, "the template's name shows");
+      assert.match(form, /Christmas Light Installation[\s\S]*Takedown and Storage/, "its lines fill the form");
+      assert.match(form, /Option 2/, "both of its options");
+      assert.equal(await f.$eval("#qt-new [data-cf-create]", (b) => b.disabled), false, "ready to create (the customer stayed)");
+      assert.deepEqual(await screenProblems(f), [], "New Quote from a template passes the phone checks");
+
+      await f.click("#qt-new [data-cf-mockup-auto]");
+      await sheetUp(f, /Lights mockup/);
+      const n = await bulbsDrawn(f);
+      assert.ok(n > 40, `bulbs drawn: ${n}`);
+      assert.equal(calls.photo, 1);
+      assert.equal(calls.lines, 1);
+      assert.deepEqual(await screenProblems(f), [], "the mockup sheet passes the phone checks");
+      await shot(page, `quotes-mockup-${device}`);
+      await f.click(".sheet.on [data-mk-color=multi]");
+      await f.waitForFunction(() => document.querySelector(".sheet.on [data-mk-color=multi]").getAttribute("aria-pressed") === "true");
+      await bulbsDrawn(f);
+      await f.click(".sheet.on [data-mk-save]");
+      await f.waitForFunction(() => /Saved/.test(document.querySelector(".sheet.on [data-mk-save]").textContent), null, { timeout: 5000 });
+      await f.click(".sheet.on [data-sheet-x]");
+      await sheetGone(f);
+      assert.match(await f.textContent("#qt-new"), /Lights mockup/, "it goes on the quote with Create");
+      await p.clean();
+    } finally { await p.close(); }
+  });
+}
+
+test("quotes: a lights quote's Mockup saves the picture to the quote; the edge finder steps in without Claude; Settings lists the templates", async () => {
+  const { p, page, f } = await open("olive", "iphone13");
+  try {
+    const jpeg = await syntheticHouse(page);
+    await mockMockup(page, seeded.lightsHome.property, jpeg, { source: "none" });
+    await goTo(f, `/quotes/${seeded.quotes.lights}`);
+    await f.waitForSelector(".qt-mk-card [data-act=mockup]");
+    await f.click(".qt-mk-card [data-act=mockup]");
+    await sheetUp(f, /Lights mockup/);
+    await bulbsDrawn(f);
+    assert.match(await f.textContent(".sheet.on [data-mk-note]"), /edge finder/, "drawn by the app's own edge finder, and it says so");
+    await f.click(".sheet.on [data-mk-save]");
+    await f.waitForFunction(() => /Saved/.test((document.querySelector(".sheet.on [data-mk-save]") || {}).textContent || ""), null, { timeout: 8000 });
+    await f.click(".sheet.on [data-sheet-x]");
+    await sheetGone(f);
+    await f.waitForFunction(() => /1 on the quote/.test(document.getElementById("view").textContent), null, { timeout: 8000 });
+    const q = await (await p.ctx.request.get(`/api/crm/quotes/${seeded.quotes.lights}`, { headers: { "x-crm": "1" } })).json();
+    assert.equal(q.data.quote.mockup_file_ids.length, 1, "a mockup file on the quote (the customer sees it once sent)");
+
+    await goTo(f, "/settings/estimate-templates");
+    assert.equal(await title(f), "Estimate templates");
+    assert.equal((await f.$$("#view .qt-tpl-row")).length, 10);
+    assert.deepEqual(await screenProblems(f), [], "Estimate templates passes the phone checks");
+    await shot(page, "quotes-estimate-templates-iphone13");
+    await f.click("#view .qt-tpl-row:first-child a.row");
+    await f.waitForSelector("[data-tpl-form]");
+    assert.deepEqual(await screenProblems(f), [], "a template's page passes the phone checks");
+    await p.clean();
+  } finally { await p.close(); }
+});

@@ -8,6 +8,12 @@
 // (the customer's own) and a note for the customer. Create Estimate saves
 // a draft and opens it (Send is there). A retry never makes two (client id).
 // The builder stays for Edit and for "Measure and price" (#/quotes/measure).
+// "Start from a template" (the owner, Nov 16) at the top fills the options
+// and the note from an estimate template (POST /quote-templates/:id/apply,
+// priced from today's price book and the property's counts); the customer
+// stays and everything stays editable. On lights work the Mockup chip makes
+// the mockup of the house right here (mockup.js); it goes on the quote with
+// Create.
 
 import { html, toast, confirmSheet, attrs as attrsOf } from "../../core/ui.js";
 import { uuid } from "../../core/api.js";
@@ -18,6 +24,7 @@ import {
   saveLeadSource, pickCustomer, pickProperty, pickItem, lineFromItem, lineSheet, discountSheet, discountWords, pickOne, pickFiles, CF_ICONS,
 } from "../../core/create.js";
 import { ensureStyles, PLAN_NAMES, optionTotals, visitsOf } from "./kit.js";
+import { openMockup } from "./mockup.js";
 import { money } from "../../core/format.js";
 import { SOURCES } from "../contacts/kit.js";
 
@@ -25,9 +32,10 @@ const PLAN_KEYS = ["biannual", "quarterly", "monthly", "custom"];
 const CATALOG = {
   biannual: { frequency: { interval: "month", count: 6 }, visits_per_year: 2 }, quarterly: { frequency: { interval: "month", count: 3 }, visits_per_year: 4 },
   monthly: { frequency: { interval: "month", count: 1 }, visits_per_year: 12 }, custom: { frequency: { interval: "month", count: 6 }, visits_per_year: 2 },
+  lights_annual: { frequency: { interval: "year", count: 1 }, visits_per_year: 1 },
 };
 const tmpId = (p) => `${p}_${uuid().replace(/[^0-9a-f]/g, "").slice(0, 12)}`;
-const typeText = (o) => (o.kind === "plan" && o.plan ? `${PLAN_NAMES[o.plan.catalog_key] || "Custom"} plan` : "One-time job");
+const typeText = (o) => (o.kind === "plan" && o.plan ? (o.plan.catalog_key === "lights_annual" ? "Lights plan" : `${PLAN_NAMES[o.plan.catalog_key] || "Custom"} plan`) : "One-time job");
 const LIGHTS = (s) => s.options.some((o) => (o.lines || []).some((l) => /christmas lights/i.test(l.service_type || "") || l.category === "lights" || /\blights?\b/i.test(l.title || "")));
 const oneTime = (n) => ({ id: tmpId("op"), name: n ? `Option ${n + 1}` : "One-time", kind: "one_time", recommended: !n, lines: [], discounts: [] });
 
@@ -44,7 +52,7 @@ async function load(params, ctx) {
     ctx.api("/pricing/context", { cache: false }).then((r) => r.data),
     params.contact ? loadCustomer(ctx.api, params.contact).catch(() => null) : null,
   ]);
-  return { cx, contact, property: primaryOf(contact, q.get("property") || ""), source: contact ? contact.source : "", options: [oneTime(0)], notes: "", files: [], client_id: uuid() };
+  return { cx, contact, property: primaryOf(contact, q.get("property") || ""), source: contact ? contact.source : "", options: [oneTime(0)], notes: "", files: [], mockups: [], template: null, tplWarnings: [], client_id: uuid() };
 }
 
 const ready = (s) => !!s.contact && s.options.some((o) => o.lines.length);
@@ -65,16 +73,40 @@ function optionBlock(s, o, i) {
     ${totalRow(t.first_cents, o.kind === "plan" ? { label: new Set(t.per_visit_cents).size <= 1 ? "Total a visit" : "First visit", sub: `${money(t.annual_cents)} a year (${v.year} visit${v.year === 1 ? "" : "s"})`, data: String(i) } : { data: String(i) })}
   </section>`;
 }
+// What a template left to do, in words (POST /quote-templates/:id/apply warnings).
+export const TPL_WARNINGS = {
+  count_panes: "No pane count on file: set the exterior price, or Measure and price.",
+  confirm_panes_on_site: "Priced from square feet: confirm the panes on site.",
+  count_screens_on_site: "Add how many screens.",
+  count_tracks: "Add how many tracks.",
+  count_on_site: "Add the counts on site.",
+  measure_lights: "Add the feet (Light Studio's Measure roof).",
+  set_price: "Set the price on the lines at $0.",
+  price_gutters: "Gutters are priced by hand ($100 to $299 is typical).",
+  early_bird_over: "The Early Bird deadline has passed, so it's left off.",
+  over_100_panes: "Over 100 panes: price the exterior by hand.",
+  over_100_panes_interior: "Over 100 panes: price the interior by hand.",
+  missing_item: "A price book item in this template is gone, so it was left out.",
+  missing_discount: "A discount in this template is gone, so it was left out.",
+};
+
+function templateRow(s) {
+  if (!s.template) return html`<button type="button" class="cf-link qt-tpl-start" data-cf-tpl>${CF_ICONS.doc}<span>Start from a template</span>${CF_ICONS.chevright}</button>`;
+  return html`<div class="cf-card qt-tpl-start">${pickRow("Template", s.template.name, { data: { "cf-tpl": true } })}</div>
+    ${s.tplWarnings.length ? html`<ul class="qb-warn">${s.tplWarnings.map((w) => html`<li class="warn-box">${TPL_WARNINGS[w] || w}</li>`)}</ul>` : ""}`;
+}
+
 function render(s, ctx) {
   if (s.gone) return html``;
   const body = html`
+    ${ctx.can("quotes:write") ? templateRow(s) : ""}
     ${fieldLabel("Customer")}
     ${customerCard(s.contact, s.property)}
-    ${mockupChip(LIGHTS(s) && ctx.can("office:tools"))}
+    ${mockupChip(LIGHTS(s) && ctx.can("quotes:write"), { auto: true })}
     ${s.options.map((o, i) => optionBlock(s, o, i))}
     <button type="button" class="cf-link" data-cf-measure>${CF_ICONS.ruler}<span>Measure and price</span>${CF_ICONS.chevright}</button>
     ${fieldLabel("Attachments")}
-    <div class="cf-card"><div class="cf-row"><span class="cf-t"><span class="cf-sl">Files for your customer</span>${s.files.length ? html`<small>${s.files.map((f) => f.name || "A photo").join(", ")}</small>` : ""}</span><button type="button" class="cf-pill cf-addpill" data-cf-attach>${s.files.length ? "Add more" : "Add"}</button></div></div>
+    <div class="cf-card"><div class="cf-row"><span class="cf-t"><span class="cf-sl">Files for your customer</span>${s.files.length || s.mockups.length ? html`<small>${[...s.mockups.map(() => "Lights mockup"), ...s.files.map((f) => f.name || "A photo")].join(", ")}</small>` : ""}</span><button type="button" class="cf-pill cf-addpill" data-cf-attach>${s.files.length ? "Add more" : "Add"}</button></div></div>
     <div class="cf-card">${pickRow("Lead source", s.source || "None", { data: { "cf-source": true }, muted: !s.source })}</div>
     ${notesField("client_notes", s.notes, { placeholder: "Add a note (the customer sees it)", label: "Notes" })}`;
   return createPage({ title: "New Estimate", body, form: { id: "qt-new", "data-qt-new": true }, cta: { label: "Create Estimate", disabled: !ready(s) } });
@@ -101,6 +133,7 @@ async function save(form, ctx) {
     const id = r.data.id;
     const warns = [];
     await saveLeadSource(ctx.api, s.contact, s.source);
+    for (const f of s.mockups) await uploadPhoto({ ownerType: "quote", ownerId: id, kind: "mockup", file: f, caption: "Christmas lights mockup" }).catch((e) => warns.push(`The mockup didn't upload: ${e.message}`));
     for (const f of s.files) await uploadPhoto({ ownerType: "quote", ownerId: id, kind: "photo", file: f }).catch((e) => warns.push(`${f.name || "A file"} didn't upload: ${e.message}`));
     toast(warns.length ? `Saved ${r.data.number_label}. ${warns[0]}` : `Saved ${r.data.number_label}`, { ms: warns.length ? 5000 : 2600 });
     ctx.go(`/quotes/${encodeURIComponent(id)}`, { replace: true });
@@ -119,8 +152,9 @@ function setType(s, o, key) {
   o.discounts = (o.discounts || []).filter((d) => d.stack_group !== "plan" && !String(d.key || "").startsWith("plan_"));
   if (key === "one_time") { o.kind = "one_time"; delete o.plan; if (/plan$/i.test(o.name || "")) o.name = "One-time"; return; }
   o.kind = "plan";
-  o.plan = { catalog_key: key, ...JSON.parse(JSON.stringify(CATALOG[key])), term_months: (o.plan && o.plan.term_months) || 12, billing: "barta_standard", autopay: true, auto_renew: true };
-  o.name = `${PLAN_NAMES[key]} plan`;
+  const lights = key === "lights_annual";
+  o.plan = { catalog_key: key, ...JSON.parse(JSON.stringify(CATALOG[key])), term_months: (o.plan && o.plan.term_months) || 12, billing: lights ? "after_visit" : "barta_standard", autopay: !lights, auto_renew: true };
+  o.name = lights ? "Christmas lights, every season" : `${PLAN_NAMES[key]} plan`;
   const per = ((s.cx.pricing && s.cx.pricing.plan_discount_per_visit_cents) || {})[key];
   const def = (s.cx.discounts || []).find((d) => d.key === `plan_${key}`);
   if (per && def) o.discounts.push({ id: tmpId("dc"), def_id: def.id, key: def.key, name: def.name, type: "fixed", value: per, scope: { type: "all" }, stack_group: "plan" });
@@ -153,6 +187,7 @@ export default {
       const o = s.options[Number(el.dataset.cfOtype)];
       const v = await pickOne({ title: "Line items", current: o.kind === "plan" ? o.plan.catalog_key : "one_time", items: [
         { value: "one_time", label: "One-time job" }, ...PLAN_KEYS.map((k) => ({ value: k, label: `${PLAN_NAMES[k]} plan`, sub: k === "custom" ? "2 visits a year to start" : `${CATALOG[k].visits_per_year} visits a year` })),
+        ...((o.lines || []).some((l) => l.category === "lights") ? [{ value: "lights_annual", label: "Christmas lights plan", sub: "Every season" }] : []),
       ] });
       if (!v) return;
       setType(s, o, v);
@@ -201,6 +236,11 @@ export default {
       redraw(ctx);
     },
     "click [data-cf-measure]": (e, el, ctx) => goMeasure(ctx),
+    "click [data-cf-tpl]": (e, el, ctx) => startFromTemplate(el, ctx),
+    "click [data-cf-mockup-auto]": (e, el, ctx) => {
+      const s = ctx.state;
+      openMockup(ctx, { propertyId: s.property && s.property.id, quoteId: null, name: s.contact && s.contact.name, studio: ctx.can("office:tools"), onSave: (file) => { s.mockups = [file]; redraw(ctx); } });
+    },
     "click [data-cf-source]": async (e, el, ctx) => {
       if (!ctx.state.contact) { toast("Pick the customer first.", { bad: true }); return; }
       const v = await pickOne({ title: "Lead source", current: ctx.state.source, items: SOURCES.map((x) => ({ value: x, label: x })) });
@@ -215,6 +255,31 @@ export default {
   },
   mount(el, s) { if (s && !s.gone) setReady(el, ready(s)); },
 };
+
+// "Start from a template": Flyra's picker (the name and its one line), then
+// the template's options priced for this property fill the form.
+async function startFromTemplate(el, ctx) {
+  const s = ctx.state;
+  let rows;
+  try { rows = (await ctx.api("/quote-templates", { cache: false })).data; } catch (err) { toast(err.message, { bad: true }); return; }
+  if (!rows.length) { toast("No templates yet. Add them in Settings, Services & pricing.", { bad: true }); return; }
+  const id = await pickOne({ title: "Start from a template", current: s.template && s.template.id, items: rows.map((r) => ({ value: r.id, label: r.name, sub: r.summary })) });
+  if (!id) return;
+  if (s.options.some((o) => o.lines.length) && !(await confirmSheet("The template's options take the place of the line items here.", { title: "Use this template?", yes: "Use it" }))) return;
+  busy(el, true, "Filling it in…");
+  try {
+    const r = await ctx.api(`/quote-templates/${encodeURIComponent(id)}/apply`, { method: "POST", body: s.property ? { property_id: s.property.id } : {} });
+    const out = r.data;
+    s.options = out.options.slice(0, 3).map((o, i) => ({ ...o, id: tmpId("op"), recommended: !!o.recommended, lines: o.lines || [], discounts: o.discounts || [], name: o.name || (i ? `Option ${i + 1}` : "One-time") }));
+    if (!s.options.length) s.options = [oneTime(0)];
+    if (!s.options.some((o) => o.recommended)) s.options[0].recommended = true;
+    if (out.client_notes && !s.notes.trim()) s.notes = out.client_notes;
+    s.template = { id, name: out.template.name };
+    s.tplWarnings = out.warnings || [];
+    redraw(ctx);
+    toast(`Started from ${out.template.name}`);
+  } catch (err) { busy(el, false); toast(err.message, { bad: true }); }
+}
 
 async function choose(ctx) {
   const s = ctx.state;
