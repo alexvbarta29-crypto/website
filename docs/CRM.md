@@ -595,15 +595,19 @@ The manual path, for reference:
   secondary 15 px grey, small caps labels 12-13 px spaced, tabular figures
   for money, counts and times. **Two themes**, chosen per phone or
   computer (localStorage `crm-theme`; `core/nav.js` `applyTheme`,
-  `pickTheme`): **Dark** (Flyra's, the default: a near-black canvas
-  #111214, cards #1b1c1f with a subtle border, a dark glass bar, light
-  text, a soft teal glow behind Home's top), **Light** (Rotor's: iOS
-  grouped grey #f2f2f7, white cards with a very soft shadow and no hard
-  border) or **Automatic** (the phone's own setting, live). `html[data-theme]`
-  picks the set (dark when nothing is set); the CRM's own sign-in pages
-  (`/crm/login`, setup, invite links) stay light, while `/office`'s
-  sign-in page (the one everybody sees) follows this phone's choice, dark
-  by default.
+  `pickTheme`): **Light** (the default since Nov 2026, the owner: "make
+  it white, not black. It's easier to read white": a very light grey
+  canvas #f6f6f8, pure white cards with a hairline, near-black text),
+  **Dark** (Flyra's: a near-black canvas #111214, cards #1b1c1f with a
+  subtle border, a dark glass bar, light text, a soft teal glow behind
+  Home's top) or **Automatic** (the phone's own setting, live). A phone
+  that had picked Dark before Light became the default was moved to Light
+  once (localStorage `crm-theme-white` marks it); after that its own
+  choice stays. `html[data-theme]` picks the set; every page starts as
+  `light` with a light status bar color, so nothing flashes black on open;
+  the CRM's own sign-in pages (`/crm/login`, setup, invite links) stay
+  light, while `/office`'s sign-in page (the one everybody sees) follows
+  this phone's choice, light by default.
   The Menu's sun button and My account → Appearance switch it; the office
   shell around the frame matches its backdrop and status bar color
   (`crm:theme`). Text is at least 4.5:1 in both. Rounded cards (18-20 px),
@@ -926,11 +930,26 @@ calls), `GET /home/agenda?view=&date=`, `PUT /home/layout { cards }`.
   on every screen with the bar. The screen dims, a search sits at the top
   ("Search customers, jobs, tasks...": `GET /search`) and the things to
   make stack above the + as glass pills with round icons, the most used
-  first: Lead or customer (the full form; someone who may not use it, a
-  tech at a door, gets the quick Lead), Quote, Job, Invoice, Plan, Task
-  (each only for someone who may; `quickCreates`). The desk's **New** is
-  the same list. Log a call and Text someone are their own screens' +
-  (Calls, the Inbox). The + becomes an ×.
+  first: Lead, then Customer (two buttons, the owner, Nov 2026: the one
+  full form, `#/contacts/new` as a lead and `#/contacts/new?as=customer`
+  as a customer, its title New lead or New customer; someone who may not
+  use it, a tech at a door, gets the quick Lead), Quote, Job, Invoice,
+  Plan, Task (each only for someone who may; `quickCreates`). The desk's
+  **Create** is the same list. Log a call and Text someone are their own
+  screens' + (Calls, the Inbox). The + becomes an ×.
+- **Motion** (Nov 2026, the owner: "a little more premium animations"):
+  subtle and quick (150 to 280 ms, iOS's ease-out curves), transform and
+  opacity only, and only on something a person did: the next screen
+  slides in a little from the right as it fades in, going back the screen
+  you leave slides away, a tab crossfades, the first paint's cards and
+  rows rise in a short stagger; sheets (the Menu, the "..." sheets) spring
+  up with a slight overshoot over a smoothly dimming backdrop; the +
+  pills rise in turn; a pressed button gives a little (97%) and darkens;
+  toasts slide down and fade as they go; a segmented control's pill
+  slides to the tapped segment; skeletons shimmer. A refresh, a poll or a
+  rerender never moves anything. Under the phone's Reduce Motion none of
+  it happens (`core/ui.js` "motion", `crm.css` "motion"; e2e phones run
+  as Reduce Motion unless a spec asks for `motion: true`).
 - **Top-level screens** (a tab's own, or one the Menu lists: opened from
   another top-level screen they have no back button) have a 34 px bold
   title on the left and round buttons on the right: the screen's own

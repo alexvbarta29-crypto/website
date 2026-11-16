@@ -8,7 +8,7 @@ owner exists, to set it up) `/office` is the CRM, full screen, with no
 header, logo bar or tab row; on a computer (900 px and up) not even the
 "Get the app" card, so the CRM's own sidebar and top bar are all there is.
 It looks like Flyra's iPhone app (Rotor's where Flyra shows
-nothing), dark by default with a Light / Dark / Automatic choice per phone
+nothing), light by default with a Light / Dark / Automatic choice per phone
 (the Menu's sun button, My account → Appearance), in the iPhone's own font
 and Barta's coral (docs/CRM.md "What the app is", the look). It opens on
 **Home** (docs/CRM.md "Home and navigation"): Flyra's Home, "Good evening"
@@ -84,7 +84,7 @@ The CRM sign-in (each person's own login) is the only way in. `office.mjs`:
   office cookie that browser held, a tech never sees a number, a dashboard
   or an office tool, and an old `#lights` link opens the CRM's Today.
 - **Signed out, or the office cookie alone:** the sign-in page, in the
-  CRM's look (dark by default, or the phone's Light / Dark / Automatic
+  CRM's look (light by default, or the phone's Light / Dark / Automatic
   choice from My account; the phone's own font, Barta's coral): **Login**,
   **Password**, **Sign in**, and **Forgot password?** (below). There is no
   "Office password" tab and no optional office password field any more. A
