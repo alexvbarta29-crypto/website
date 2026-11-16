@@ -17,16 +17,21 @@
 //               left, a faint grid and a dotted baseline; under it what a
 //               tap on the line reads out, and "Updated 5:16 PM" (or where
 //               Collected comes from). ARR is by month: the next 12
-//               months first (Nov 16, "the ARR for next year per month":
-//               ARR projected at each month's end from today's plans, "In
-//               12 months" and the change to it), or the past (Nov 15:
-//               6M 1Y YTD All, its change since the period began and this
-//               month's); today's ARR the big number, a bar a month with
-//               its MRR on it ("show the MRR in all 12 months", Nov 15: no
-//               axis, no grid, this month lit), the short month names,
-//               and under them the month picked (a tap): its MRR and ARR,
-//               the plans renewing and ending in it (ahead) or added and
-//               lost (past)
+//               months first (Nov 16, "the ARR for next year per month"),
+//               or the past (Nov 15: 6M 1Y YTD All); today's ARR the big
+//               number (MRR, ARR / 12, under it), a bar a month with its
+//               amount on it (no axis, no grid, this month lit), the short
+//               month names. Each bar is the recurring revenue that lands
+//               in that month (Nov 16 evening, the owner: "It's not that
+//               even"): the plans' visits in it, on the schedule and, past
+//               a plan's last visit, projected by its cadence (the lighter
+//               part on top; in the past: done, and the lighter part still
+//               to do). Beside the big number what's scheduled and what's
+//               projected (ahead) or ARR's change and the period's
+//               recurring revenue (past). Under the bars the month picked
+//               (a tap): its revenue, plan visits, scheduled and projected
+//               (or done and still scheduled), the plans renewing, ending
+//               and starting (ahead) or added and lost (past)
 //   Clock in    compact: TIMESHEET, today's hours, Clock In / Clock Out
 //   Today       Daily | Weekly | Monthly with arrows, the visits (a color
 //               bar per tech, customer, "Job · 8:00 AM – 12:00 PM", who,
@@ -82,7 +87,7 @@ export const usdShort = (cents) => {
   if (Math.abs(d) >= 1000) return `$${+(d / 1000).toFixed(d % 1000 ? 1 : 0)}K`;
   return `$${Math.round(d)}`;
 };
-// a bar's MRR (Nov 15, "showing the MRR in all 12 months"): "$154", "$3.2k", "$32k", "$1.2M";
+// a bar's amount (Nov 15; Nov 16: the month's recurring revenue): "$154", "$3.2k", "$32k", "$1.2M";
 // tight (a phone too narrow for the "$"): "154", "3.2k"
 export const mrrShort = (cents, tight = false) => {
   if (cents === null || cents === undefined || !Number.isFinite(Number(cents))) return "-";
@@ -222,22 +227,22 @@ const toneOf = (c) => (c > 0 ? "up" : c < 0 ? "down" : "");
 // ARR's change since the period began ($ and %) and this month's change (by month, Nov 15),
 // or its change and MRR (an older per-day answer)
 export function sideStats(view, v) {
-  if (!v || v.loading) return [["…", "…"], ["…", "…"]].map(([k, val], i) => ({ key: i ? "b" : "a", label: view === "arr" ? (v && v.ahead ? (i ? "Change" : "In 12 months") : i ? "This month" : "Change") : i ? "Peak" : "Avg", value: val }));
-  // ARR ahead (Nov 16): where it ends up in 12 months, and the change to it ($ and %)
+  if (!v || v.loading) return [["…", "…"], ["…", "…"]].map(([k, val], i) => ({ key: i ? "b" : "a", label: view === "arr" ? (v && v.ahead ? (i ? "Projected" : "Scheduled") : i ? "Recurring" : "Change") : i ? "Peak" : "Avg", value: val }));
+  // ARR ahead (Nov 16): the next 12 months' recurring revenue, what's on the schedule and what's projected
   if (view === "arr" && v.ahead) {
     const none = v.total === null;
-    const last = v.points && v.points.length ? v.points[v.points.length - 1] : null;
     return [
-      { key: "a", label: "In 12 months", value: none ? "-" : usd(v.end), title: none || !last ? "" : `ARR at the end of ${pointWords(v, last.key)}` },
-      { key: "b", label: "Change", value: none ? "-" : changeShort(v), sub: none ? "" : pctText(v), tone: toneOf(v.change), title: none ? "" : `${changeText(v)} by the end of ${last ? pointWords(v, last.key) : "the year"}` },
+      { key: "a", label: "Scheduled", value: none ? "-" : usd(v.scheduled), title: none ? "" : "Plan visits on the schedule in the next 12 months" },
+      { key: "b", label: "Projected", value: none ? "-" : usd(v.projected), title: none ? "" : "Plan visits expected by each plan's cadence where nothing is scheduled yet" },
     ];
   }
+  // ARR by month, the past: ARR's change since the period began, and the recurring revenue its months had
   if (view === "arr" && v.month_change !== undefined) {
     const none = v.total === null;
     const since = v.points && v.points.length ? `since the start of ${pointWords(v, v.points[0].key)}` : "";
     return [
-      { key: "a", label: "Change", value: none ? "-" : changeShort(v), sub: none ? "" : pctText(v), tone: toneOf(v.change), title: none ? "" : `${changeText(v)} ${since}`.trim() },
-      { key: "b", label: "This month", value: none ? "-" : changeShort({ change: v.month_change }), tone: toneOf(v.month_change), title: none ? "" : `${changeShort({ change: v.month_change })} this month` },
+      { key: "a", label: "Change", value: none ? "-" : changeShort(v), sub: none ? "" : pctText(v), tone: toneOf(v.change), title: none ? "" : `ARR ${changeText(v)} ${since}`.trim() },
+      { key: "b", label: "Recurring", value: none || v.sum === undefined ? "-" : usd(v.sum), title: none ? "" : "Plan visits in these months, done and scheduled" },
     ];
   }
   if (view === "arr") {
@@ -256,18 +261,22 @@ export function monthPicked(v, key) {
   const pts = ((v && v.points) || []).filter((x) => x.value !== null && x.value !== undefined);
   return pts.find((x) => x.key === key) || (v && v.ahead ? pts[0] : pts[pts.length - 1]) || null;
 }
-// a month's MRR: its ARR / 12 (an older server's points carry none)
-export const mrrOf = (x) => (!x || x.value === null || x.value === undefined ? null : Number.isFinite(x.mrr) ? x.mrr : Math.round(x.value / 12));
 const plansWord = (n) => `${Number(n || 0).toLocaleString("en-US")} ${n === 1 ? "plan" : "plans"}`;
-// the picked month's readout: the month, its MRR and ARR at the month's end, the plans added and lost in it;
-// ahead (Nov 16): projected, the plans renewing and ending in it (and starting, when one does)
+const visitsWord = (n) => `${Number(n || 0).toLocaleString("en-US")} ${n === 1 ? "visit" : "visits"}`;
+// a bar's lighter part: what's projected (ahead) or still to do (the past)
+export const softOf = (x, ahead = false) => (!x || x.value === null || x.value === undefined ? 0 : Number((ahead ? x.projected : x.scheduled) || 0));
+// the picked month's readout (Nov 16): the month, its recurring revenue and plan visits; ahead what's on the
+// schedule and what's projected, the plans renewing and ending in it (and starting, when one does); the past
+// what was done and what's still scheduled, the plans added and lost
 export function monthRead(x, ahead = false) {
   if (!x) return "";
   const when = `${MONTHS[Number(x.key.slice(5, 7)) - 1].slice(0, 3)} ${x.key.slice(0, 4)}`;
+  const cell = (label, value, cls = "") => html`<div><span>${label}</span><b class="${cls}">${value}</b></div>`;
   if (ahead) {
-    return html`<p class="mr-h">${when}<small>Projected</small></p><div class="mr-a"><span>MRR</span><b>${usd(mrrOf(x))}</b></div><div><span>ARR</span><b>${usd(x.value)}</b></div><div><span>Renewing</span><b>${plansWord(x.renewing)}</b></div><div><span>Ending</span><b class="${x.ending ? "down" : ""}">${plansWord(x.ending)}</b></div>${x.starting ? html`<div><span>Starting</span><b class="up">${plansWord(x.starting)}</b></div>` : ""}`;
+    const tag = x.projected > 0 ? (x.scheduled > 0 ? "Part projected" : "Projected") : "";
+    return html`<p class="mr-h">${when}${tag ? html`<small>${tag}</small>` : ""}</p>${cell("Revenue", usd(x.value), "mr-big")}${cell("Plan visits", visitsWord(x.visits))}${cell("Scheduled", usd(x.scheduled))}${cell("Projected", usd(x.projected), x.projected ? "soft" : "")}${cell("Renewing", plansWord(x.renewing))}${cell("Ending", plansWord(x.ending), x.ending ? "down" : "")}${x.starting ? cell("Starting", plansWord(x.starting), "up") : ""}`;
   }
-  return html`<p class="mr-h">${when}</p><div class="mr-a"><span>MRR</span><b>${usd(mrrOf(x))}</b></div><div><span>ARR</span><b>${usd(x.value)}</b></div><div><span>Added</span><b class="${x.added ? "up" : ""}">${plansWord(x.added)}</b></div><div><span>Lost</span><b class="${x.lost ? "down" : ""}">${plansWord(x.lost)}</b></div>`;
+  return html`<p class="mr-h">${when}</p>${cell("Revenue", usd(x.value), "mr-big")}${cell("Plan visits", visitsWord(x.visits))}${cell("Done", usd(x.done))}${cell("Scheduled", usd(x.scheduled), x.scheduled ? "soft" : "")}${cell("Added", plansWord(x.added), x.added ? "up" : "")}${cell("Lost", plansWord(x.lost), x.lost ? "down" : "")}`;
 }
 
 function moneyTop(s, ctx) {
@@ -282,7 +291,7 @@ function moneyTop(s, ctx) {
   const target = view === "arr" ? open(ctx, "/plans") : open(ctx, "/payments");
   const ser = loading ? null : lineSeries(v);
   const drawn = !!ser && ser.values.some((x) => x !== null && x > 0);
-  // ARR by month (Nov 15): bars, a readout of the month picked
+  // ARR by month (Nov 15): bars (Nov 16: each month's recurring revenue), a readout of the month picked
   const months = !loading && view === "arr" && v.grain === "month";
   const ahead = months && !!v.ahead;
   const stats = sideStats(view, v);
@@ -308,14 +317,14 @@ function moneyTop(s, ctx) {
     </div>
     ${!loading && view === "revenue" && v.missing ? html`<p class="hm-note">${MISSING[v.missing] || "Rotor's numbers aren't in yet."}</p>` : ""}
     ${loading ? html`<div class="hc hf" aria-hidden="true"></div>`
-      : drawn && months ? html`<p class="hm-bcap" aria-hidden="true">${ahead ? "Projected MRR by month" : "MRR by month"}<span>ARR ÷ 12</span></p>
-        <div class="hc hf hb" data-chart="arr" tabindex="0" role="group" aria-label="${`${ahead ? "Projected MRR" : "MRR"} at the end of each month (ARR divided by 12), ${v.label || ""}. Arrow keys pick a month.`}"></div>
+      : drawn && months ? html`<p class="hm-bcap" aria-hidden="true">Recurring by month<span class="hb-key"><i class="k-solid"></i>${ahead ? "Scheduled" : "Done"}<i class="k-soft"></i>${ahead ? "Projected" : "Scheduled"}</span></p>
+        <div class="hc hf hb" data-chart="arr" tabindex="0" role="group" aria-label="${`Recurring revenue each month: the plan visits in it${ahead ? ", scheduled and projected" : ""}, ${v.label || ""}. Arrow keys pick a month.`}"></div>
         <div class="hm-mread" id="hm-mread" aria-live="polite">${monthRead(monthPicked(v, ui.arrMonth), ahead)}</div>
-        ${ahead ? srTable(`Projected MRR and ARR at the end of each month, ${v.label || ""}`, ["Month", "MRR", "ARR", "Plans renewing", "Plans ending", "Plans starting"], v.points.map((x) => [pointWords(v, x.key), usd(mrrOf(x)), usd(x.value), String(x.renewing), String(x.ending), String(x.starting)]))
-          : srTable(`MRR and ARR at the end of each month, ${v.label || ""}`, ["Month", "MRR", "ARR", "Plans added", "Plans lost"], v.points.filter((x) => x.value !== null).map((x) => [pointWords(v, x.key), usd(mrrOf(x)), usd(x.value), String(x.added), String(x.lost)]))}`
+        ${ahead ? srTable(`Recurring revenue each month, ${v.label || ""}`, ["Month", "Recurring revenue", "Scheduled", "Projected", "Plan visits", "ARR at the month's end", "Plans renewing", "Plans ending", "Plans starting"], v.points.map((x) => [pointWords(v, x.key), usd(x.value), usd(x.scheduled), usd(x.projected), String(x.visits), usd(x.arr), String(x.renewing), String(x.ending), String(x.starting)]))
+          : srTable(`Recurring revenue each month, ${v.label || ""}`, ["Month", "Recurring revenue", "Done", "Scheduled", "Plan visits", "ARR at the month's end", "Plans added", "Plans lost"], v.points.filter((x) => x.value !== null).map((x) => [pointWords(v, x.key), usd(x.value), usd(x.done), usd(x.scheduled), String(x.visits), usd(x.arr), String(x.added), String(x.lost)]))}`
       : drawn ? html`<div class="hc hf" data-chart="${view}" tabindex="0" role="group" aria-label="${`${what} by ${grainWord}, ${v.label || ""}. Arrow keys read each point.`}"></div>
         ${srTable(`${what} by ${grainWord}, ${v.label || ""}`, [v.grain === "week" ? "Week of" : v.grain === "month" ? "Month" : "Day", what], ser.keys.map((k, i) => [k, i]).filter(([, i]) => ser.values[i] !== null).map(([k, i]) => [pointWords(v, k), usd(ser.values[i])]))}`
-      : html`<p class="hm-note hm-nochart">${view === "arr" ? (v.total === null ? "ARR shows here once there are plans." : "No recurring plans in this period.") : v.missing ? "" : v.total === null ? "Nothing counted for this period yet." : "Nothing collected in this period."}</p>`}
+      : html`<p class="hm-note hm-nochart">${view === "arr" ? (v.total === null ? "ARR shows here once there are plans." : months ? "No plan visits in these months." : "No recurring plans in this period.") : v.missing ? "" : v.total === null ? "Nothing counted for this period yet." : "Nothing collected in this period."}</p>`}
     <div class="hm-mfoot"><span class="hm-read" id="read-${view}" aria-live="polite">${note}</span><span class="hm-upd">${updated}</span></div>
   </section>`;
 }
@@ -685,12 +694,13 @@ export default {
     const mv = m && (s.ui.money.view === "arr" ? m.arr_view : m.revenue_view);
     const el = root.querySelector(`[data-chart="${s.ui.money.view}"]`);
     if (mv && el && !mv.loading && s.ui.money.view === "arr" && mv.grain === "month") {
-      // ARR by month: each bar its month's MRR; a tap picks a month, its readout under the bars
+      // ARR by month: each bar its month's recurring revenue (the projected or still to do part lighter);
+      // a tap picks a month, its readout under the bars
       const pts = mv.points || [];
       const rd = root.querySelector("#hm-mread");
       const last = pts.filter((x) => x.value !== null && x.value !== undefined).pop();
       off.push(monthBars(el, {
-        keys: pts.map((x) => x.key), labels: pts.map((x) => x.label), values: pts.map(mrrOf), value: mrrShort,
+        keys: pts.map((x) => x.key), labels: pts.map((x) => x.label), values: pts.map((x) => x.value), soft: pts.map((x) => softOf(x, !!mv.ahead)), value: mrrShort,
         now: String(mv.through || mv.to || "").slice(0, 7) || (last && last.key),
         start: (monthPicked(mv, s.ui.money.arrMonth) || {}).key,
         onRead: (i) => { s.ui.money.arrMonth = pts[i].key; if (rd) render(rd, monthRead(pts[i], !!mv.ahead)); },

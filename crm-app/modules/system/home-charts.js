@@ -1,5 +1,5 @@
 // Home's charts, drawn in the CRM itself: the top's line (flyraLine,
-// Flyra's, Nov 15), ARR's bars by month with each month's MRR on its bar (monthBars, Nov 15) and Rotor's Money chart (pairChart, Reports uses it):
+// Flyra's, Nov 15), ARR's bars by month with each month's value on its bar (monthBars, Nov 15; Nov 16: its recurring revenue) and Rotor's Money chart (pairChart, Reports uses it):
 // Collected in coral and Scheduled in grey per day of
 // a week or a month, smooth lines (monotone: a day of $0 never dips under
 // the baseline), a dashed grid, $ ticks at the left, a few dates under it
@@ -263,19 +263,23 @@ export function flyraLine(el, spec) {
 
 // ARR by month (the owner's Nov 15 asks: "ARR by month", then "make it like
 // ARR with showing the MRR in all 12 months"): a bar a month, each with its
-// own value on top of it (MRR, short: "$154", "$3.2k"; without the "$" when
+// own value on top of it (short: "$154", "$3.2k"; without the "$" when
 // a phone is too narrow for it), so no axis and no grid; short month names
 // under the bars (as many as fit, always this month's). This month is lit
 // (`now`); one month is picked (this month to start with): its bar full,
 // a soft column behind it. A tap, a drag, the pointer or the arrow keys
-// pick another and call onRead(i).
+// pick another and call onRead(i). Nov 16: a bar is the month's recurring
+// revenue, and the part of it that is only expected (`soft`: projected
+// ahead, still to do in the past) sits on top of the rest in a lighter
+// fill with a dashed edge.
 //
-//   const c = monthBars(el, { keys, labels, values, value, now, start, onRead })
+//   const c = monthBars(el, { keys, labels, values, soft, value, now, start, onRead })
 //   c.destroy()
 //
 // keys: the months (YYYY-MM); labels: their short names; values: one per
-// key, null where there is no point; value(v, tight): a bar's label (tight:
-// the narrow form); now: this month's key; start: the key picked first.
+// key, null where there is no point; soft: the lighter part of each value
+// (optional); value(v, tight): a bar's label (tight: the narrow form); now:
+// this month's key; start: the key picked first.
 // (the "$" is drawn at 80%: hb-cur)
 const CHAR_W = { ".": 0.3, ",": 0.3, $: 0.5, k: 0.55, K: 0.66, M: 0.86, "−": 0.62, "-": 0.36 };
 // a label's width at a font size (tabular digits; a little extra for the weight)
@@ -302,6 +306,7 @@ export function monthBars(el, spec) {
   const first = spec.start ? keys.indexOf(spec.start) : -1;
   const nowI = spec.now ? keys.indexOf(spec.now) : -1;
   const value = spec.value || ((v) => String(v));
+  const soft = keys.map((_, i) => { const v = Number(spec.soft && spec.soft[i]); return vals[i] !== null && Number.isFinite(v) && v > 0 ? Math.min(v, vals[i]) : 0; });
   let sel = first >= 0 && vals[first] !== null ? first : filled.length ? filled[filled.length - 1] : -1;
   let width = 0, height = 0, geo = null;
   function draw() {
@@ -323,6 +328,12 @@ export function monthBars(el, spec) {
       const r = Math.min(5, bw / 2, h), l = cx(i) - bw / 2, t = y1 - h;
       return `M${fix(l)},${y1}V${fix(t + r)}Q${fix(l)},${fix(t)} ${fix(l + r)},${fix(t)}H${fix(l + bw - r)}Q${fix(l + bw)},${fix(t)} ${fix(l + bw)},${fix(t + r)}V${y1}Z`;
     };
+    // a bar in two parts: the solid one from the baseline (square on top), the soft one over it (rounded)
+    const part = (i, lo, hi, round) => {
+      const b = lo > 0 ? y(lo) : y1, t = Math.min(b, y(hi));
+      const r = round ? Math.min(5, bw / 2, b - t) : 0, l = cx(i) - bw / 2;
+      return `M${fix(l)},${fix(b)}V${fix(t + r)}Q${fix(l)},${fix(t)} ${fix(l + r)},${fix(t)}H${fix(l + bw - r)}Q${fix(l + bw)},${fix(t)} ${fix(l + bw)},${fix(t + r)}V${fix(b)}Z`;
+    };
     // the values on as many bars as fit (every one on a phone's 12), counted back from this month
     const last = nowI >= 0 ? nowI : n - 1;
     const valued = filled.filter((i) => lab.every === 1 || (last - i) % lab.every === 0);
@@ -334,7 +345,8 @@ export function monthBars(el, spec) {
     render(el, html`<svg class="hf-svg hb-svg" width="${W}" height="${H}" viewBox="${`0 0 ${W} ${H}`}" aria-hidden="true">
       <rect class="hb-col" x="0" y="0" width="${fix(Math.min(slot - 2, bw + 16))}" height="${fix(y1 + 4)}" rx="8" visibility="hidden"/>
       <line class="hb-base" x1="${x0}" x2="${x1}" y1="${y1 + 0.5}" y2="${y1 + 0.5}"/>
-      ${keys.map((_, i) => (vals[i] === null ? "" : html`<path class="${cls("hb-bar", i)}" data-i="${i}" d="${bar(i)}"/>`))}
+      ${keys.map((_, i) => (vals[i] === null ? "" : !soft[i] ? html`<path class="${cls("hb-bar", i)}" data-i="${i}" d="${bar(i)}"/>`
+        : html`<path class="${cls("hb-bar", i)}" data-i="${i}" d="${part(i, 0, vals[i] - soft[i], false)}"/><path class="${cls("hb-soft", i)}" data-i="${i}" d="${part(i, vals[i] - soft[i], vals[i], true)}"/>`))}
       ${valued.map((i) => { const [, sign, cur, rest] = /^(−?)(\$?)(.*)$/.exec(lab.text[i]); return html`<text class="${cls("hb-v", i)}" data-i="${i}" x="${fix(cx(i))}" y="${fix(y(vals[i]) - 6)}" text-anchor="middle" style="${`font-size:${lab.fs}px`}">${sign}${cur ? html`<tspan class="hb-cur">$</tspan>` : ""}${rest}</text>`; })}
       ${named.map((i) => html`<text class="${cls("hf-t hb-m", i)}" data-i="${i}" x="${fix(cx(i))}" y="${H - 7}" text-anchor="middle">${labels[i]}</text>`)}
     </svg>`);
@@ -343,7 +355,7 @@ export function monthBars(el, spec) {
   function show(i, quiet = false) {
     if (!filled.length || !geo) return;
     sel = vals[i] !== null && vals[i] !== undefined ? i : filled.reduce((b, j) => (b < 0 || Math.abs(j - i) < Math.abs(b - i) ? j : b), -1);
-    el.querySelectorAll(".hb-bar, .hb-m, .hb-v").forEach((b) => b.classList.toggle("on", Number(b.dataset.i) === sel));
+    el.querySelectorAll(".hb-bar, .hb-soft, .hb-m, .hb-v").forEach((b) => b.classList.toggle("on", Number(b.dataset.i) === sel));
     const col = el.querySelector(".hb-col");
     if (col) { col.setAttribute("x", fix(geo.cx(sel) - Number(col.getAttribute("width")) / 2)); col.setAttribute("visibility", "visible"); }
     if (spec.onRead && !quiet) spec.onRead(sel);

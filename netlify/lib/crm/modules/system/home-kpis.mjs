@@ -8,10 +8,13 @@
 //   scheduledDays(visits, jobs, p)          the value of the visits booked, per day
 //   arrDays(plans, p, today)                annual recurring revenue of the live plans, per day
 //   arrView(plans, p, today)                → the money card's ARR view (Nov 14): ARR, its change, active plans, MRR, the line (older clients)
-//   arrMonths(plans, from, to, today)       ARR (and MRR, ARR / 12) at each month's end, the plans added and lost in it
-//   arrMonthView(plans, range, today)       → the top's ARR view by month (Nov 15): 6M 1Y YTD All
+//   arrMonths(plans, from, to, today)       ARR at each month's end, the plans added and lost in it
 //   arrForward(plans, from, months, today)  ARR projected at each month's end ahead, the plans renewing, ending and starting
-//   arrForwardView(plans, today)            → the top's ARR view ahead (Nov 16, the default): the next 12 months
+//   planJobs(jobs)                          the plans' jobs from the jobs index: the day each lands on and its value
+//   revenueMonths(plans, jobs, from, to, today)  the recurring revenue each past month: its plan visits, done and still scheduled
+//   revenueAhead(plans, jobs, from, months, today)  the recurring revenue each month ahead: plan visits scheduled, and projected by cadence
+//   arrMonthView(plans, jobs, range, today) → the top's ARR view by month (Nov 15): 6M 1Y YTD All
+//   arrForwardView(plans, jobs, today)      → the top's ARR view ahead (Nov 16, the default): the next 12 months
 //   moneyCard({ metric, p, series, ... })   → one metric over a period (the older Collected | Scheduled | ARR card)
 //   latestImport(runs, today)               the newest finished Rotor import and whether it is fresh (3 days)
 //   moneyPair({ p, collected, scheduled })  → Rotor's Money card: Collected and Scheduled side by side, one chart (older clients)
@@ -151,12 +154,14 @@ export function rotorCollected(snap, p, today) {
 // ------------------------------------------------------------ scheduled
 
 const DEAD_VISIT = new Set(["cancelled", "no_access"]);
+// A job's value: its total (its lines after its discounts), nothing for a
+// visit that isn't billed (a touch-up, a warranty visit, a lights takedown).
+export const jobValue = (j) => (j && j.bill !== false ? num(j.tot) || 0 : 0);
 // A visit carries its job's total when it is the job's first visit (a job
 // of several days counts once); the others carry nothing.
 export function visitValue(v, jobs) {
   if ((v.ord || 1) !== 1) return 0;
-  const j = jobs.get(v.j);
-  return j && j.bill !== false ? num(j.tot) || 0 : 0;
+  return jobValue(jobs.get(v.j));
 }
 // jobs: Map(job id → index row). → { total, grain: "day", points }
 export function scheduledDays(visits, jobs, p) {
@@ -295,32 +300,6 @@ export function arrMonths(plans, fromMonth, toMonth, today) {
 export const ARR_MONTH_RANGES = Object.freeze({ next12: "The next 12 months", "6m": "The last 6 months", "1y": "The last 12 months", ytd: "This year", all: "Since the first plan" });
 // "Jun – Nov 2026", "Dec 2025 – Nov 2026", "November 2026"
 const monthSpan = (a, b) => (a === b ? `${MONTHS_LONG[Number(a.slice(5, 7)) - 1]} ${a.slice(0, 4)}` : a.slice(0, 4) === b.slice(0, 4) ? `${monthLabel(a)} – ${monthLabel(b)} ${b.slice(0, 4)}` : `${monthLabel(a)} ${a.slice(0, 4)} – ${monthLabel(b)} ${b.slice(0, 4)}`);
-// The top's ARR view by month: ARR today (the big number), its change since
-// the period began (the end of the month before its first) in $ and %,
-// this month's change (since the end of last month), the plans counted,
-// MRR, and a point per month. No plan at all: total null (the screen shows "-").
-// → { period: "months", range, from, to, label, total, change, pct, month_change, plans, mrr, grain: "month", points, through }
-export function arrMonthView(plans, range, today) {
-  const toMonth = today.slice(0, 7);
-  let fromMonth = range === "6m" ? addMonths(toMonth, -5) : range === "ytd" ? `${toMonth.slice(0, 4)}-01` : addMonths(toMonth, -11);
-  if (range === "all") {
-    const first = list(plans).map(planWindow).filter(Boolean).reduce((a, w) => (!a || w.start < a ? w.start : a), "");
-    fromMonth = first && first.slice(0, 7) < toMonth ? first.slice(0, 7) : toMonth;
-  }
-  if (fromMonth < addMonths(toMonth, -(MAX_ARR_MONTHS - 1))) fromMonth = addMonths(toMonth, -(MAX_ARR_MONTHS - 1));
-  const base = { period: "months", range, from: `${fromMonth}-01`, to: today, label: monthSpan(fromMonth, toMonth), grain: "month", through: today };
-  if (!list(plans).length) return { ...base, total: null, change: null, pct: null, month_change: null, plans: 0, mrr: null, grain: null, points: [] };
-  const points = arrMonths(plans, fromMonth, toMonth, today);
-  const now = arrAt(plans, today);
-  const before = arrOn(plans, addLocalDays(`${fromMonth}-01`, -1));
-  const lastMonth = arrOn(plans, addLocalDays(`${toMonth}-01`, -1));
-  const change = now.cents - before;
-  return {
-    ...base, total: now.cents, change, pct: before > 0 ? Math.round((change / before) * 1000) / 10 : null,
-    month_change: now.cents - lastMonth, plans: now.plans, mrr: Math.round(now.cents / 12), points,
-  };
-}
-
 // ------------------------------------------------------------ ARR ahead by month (Nov 16)
 
 // One plan's ARR from today on, as today's plans stand (no new sales, no
@@ -380,22 +359,198 @@ export function arrForward(plans, fromMonth, months, today) {
   }
   return out;
 }
+// ------------------------------------------------------------ recurring revenue by month (Nov 16)
+
+// The owner's Nov 16 check ("For the month-to-month ARR that you have ... It's
+// not that even"): ARR at a month's end hardly moves, so the bars a month are
+// the recurring revenue that lands in it instead. A semi-annual plan is
+// worth its year in ARR every day, but its money comes the two months its
+// visits are in (April and October, say), a lights plan its install's month.
+//
+// A plan's visits are its jobs (the jobs index: `pl`, the plan; `tot`, the
+// job's total after its discounts; `bill`; `fv`, its first visit's local
+// day; `tm`, the month an unscheduled one is for; `done`, when it was
+// completed). A job lands on its first visit's day, else the day it was
+// completed, else the 1st of its target month (America/Chicago days).
+const DEAD_JOB = new Set(["cancelled"]);
+const NEVER_SIGNED = new Set(["pending", "draft"]);
+const isMonthKey = (m) => /^\d{4}-\d{2}$/.test(String(m || ""));
+export function jobDay(j) {
+  if (!j) return null;
+  if (isLocalDate(j.fv)) return j.fv;
+  if (j.st === "completed" && j.done) { const d = localOf(j.done); if (d) return d; }
+  return isMonthKey(j.tm) ? `${j.tm}-01` : null;
+}
+// → Map(plan id → [{ id, on, cents, done, bill }], each plan's by day)
+export function planJobs(jobs) {
+  const by = new Map();
+  for (const j of list(jobs)) {
+    if (!j || !j.pl || DEAD_JOB.has(j.st)) continue;
+    const on = jobDay(j);
+    if (!on) continue;
+    if (!by.has(j.pl)) by.set(j.pl, []);
+    by.get(j.pl).push({ id: j.id || null, on, cents: jobValue(j), done: j.st === "completed", bill: j.bill !== false });
+  }
+  for (const xs of by.values()) xs.sort((a, b) => (a.on < b.on ? -1 : a.on > b.on ? 1 : 0));
+  return by;
+}
+// A plan whose visits are recurring revenue (the plans ARR counts): never a
+// hidden one-time series, a lights install sold for one season without
+// renewing, or a plan never signed (pending, draft). An ended plan's visits
+// that were done still were.
+export function recurringPlan(r) {
+  return !!r && r.k !== "one_time_series" && !NEVER_SIGNED.has(r.st) && !(r.ar === 0 && r.k === "lights_annual" && (num(r.tm) || 12) <= 12);
+}
+// Its visits a year (the index's `vy`; a row from before Nov 16 has its
+// catalog's: semi-annual 2, quarterly 4, monthly 12, lights 1) and the
+// months between them (a tri-annual plan: 4).
+const VISITS_A_YEAR = { biannual: 2, quarterly: 4, monthly: 12, lights_annual: 1, custom: 2 };
+export function visitsAYear(r) {
+  const v = num(r && r.vy);
+  if (v !== null && v >= 1) return Math.round(v);
+  return VISITS_A_YEAR[r && r.ck] || (r && r.k === "lights_annual" ? 1 : 2);
+}
+export const cadenceOf = (r) => Math.max(1, Math.min(12, Math.round(12 / visitsAYear(r))));
+
+// Each past month's recurring revenue (fromMonth to toMonth; a month still
+// ahead: null): the plan visits that landed in it (done: completed;
+// scheduled: still to do, the current month's rest or one overdue), with
+// how many there were and how many plans had one. A visit still to do
+// counts while its plan is live then (signed, not cancelled before it, a
+// term that doesn't renew not over). ARR at the month's end and the plans
+// added and lost in it ride along (arrMonths).
+// → [{ key, label, from, to, value, done, scheduled, visits, plans, arr, added, lost, added_cents, lost_cents }]
+export function revenueMonths(plans, jobs, fromMonth, toMonth, today) {
+  const rows = list(plans).filter(Boolean);
+  const byPlan = planJobs(jobs);
+  const now = today.slice(0, 7);
+  const slot = new Map();
+  for (const r of rows) {
+    if (!recurringPlan(r)) continue;
+    const live = LIVE_PLAN.has(r.st);
+    for (const j of byPlan.get(r.id) || []) {
+      const m = j.on.slice(0, 7);
+      if (m < fromMonth || m > toMonth || m > now || !j.bill) continue;
+      if (!j.done && !(live && !(r.eff && j.on >= r.eff) && !(r.ar === 0 && isLocalDate(r.te) && j.on > r.te))) continue;
+      if (!slot.has(m)) slot.set(m, { done: 0, scheduled: 0, visits: 0, plans: new Set() });
+      const x = slot.get(m);
+      x[j.done ? "done" : "scheduled"] += j.cents;
+      x.visits += 1;
+      x.plans.add(r.id);
+    }
+  }
+  return arrMonths(rows, fromMonth, toMonth, today).map((p) => {
+    const ahead = p.value === null;
+    const x = slot.get(p.key) || { done: 0, scheduled: 0, visits: 0, plans: new Set() };
+    const { value: arr, mrr, plans: counted, ...rest } = p;
+    return { ...rest, value: ahead ? null : x.done + x.scheduled, done: ahead ? null : x.done, scheduled: ahead ? null : x.scheduled, visits: ahead ? null : x.visits, plans: ahead ? null : x.plans.size, arr };
+  });
+}
+
+// Each month ahead's recurring revenue (`months` months from fromMonth), from
+// today's plans (planAhead: what counts today, signed later starts, terms
+// that end, cancellations that take effect): the value of the plan visits
+// on the schedule in it (done already this month included), and where a
+// plan has nothing scheduled any more, its next visits projected by its
+// cadence (every 6 months for a semi-annual plan) from its last visit (a
+// plan with no job at all: from the month it starts), each at its year's
+// share (a year × the months between visits / 12, the renewed year's after
+// it renews), up to the day it stops. Over a regular year the months add up
+// to the plans' year values: the ARR. ARR at each month's end and the
+// plans renewing, ending and starting in it ride along (arrForward).
+// → [{ key, label, from, to, value, scheduled, projected, visits, projected_visits, plans, arr, renewing, renewing_cents, ending, ending_cents, starting, starting_cents }]
+export function revenueAhead(plans, jobs, fromMonth, months, today) {
+  const rows = list(plans).filter(Boolean);
+  const byPlan = planJobs(jobs);
+  const fwd = arrForward(rows, fromMonth, months, today);
+  if (!fwd.length) return [];
+  const toMonth = fwd[fwd.length - 1].key;
+  const slot = new Map(fwd.map((p) => [p.key, { scheduled: 0, projected: 0, visits: 0, pv: 0, plans: new Set() }]));
+  const put = (m, kind, cents, id) => { const x = slot.get(m); if (!x) return; x[kind] += cents; x.visits += 1; if (kind === "projected") x.pv += 1; x.plans.add(id); };
+  for (const r of rows) {
+    if (!recurringPlan(r)) continue;
+    const w = planAhead(r, today);
+    const js = byPlan.get(r.id) || [];
+    // on the schedule: what was done (whatever became of the plan since), what's still to do while the plan goes on
+    for (const j of js) {
+      const m = j.on.slice(0, 7);
+      if (m < fromMonth || m > toMonth || !j.bill) continue;
+      if (j.done || (w && !(w.stop && j.on >= w.stop))) put(m, "scheduled", j.cents, r.id);
+    }
+    if (!w) continue;
+    // projected: after its last visit (a billed one: a lights takedown isn't the season's), by its cadence
+    const billed = js.filter((j) => j.bill);
+    const last = (billed.length ? billed : js)[(billed.length ? billed : js).length - 1] || null;
+    const every = cadenceOf(r);
+    let m = last ? addMonths(last.on.slice(0, 7), every) : w.start.slice(0, 7);
+    const dd = Number((last ? last.on : w.start).slice(8, 10)) || 1;
+    while (m < fromMonth) m = addMonths(m, every);
+    for (; m <= toMonth; m = addMonths(m, every)) {
+      const on = `${m}-${pad(Math.min(dd, daysIn(m)))}`;
+      if (w.stop && on >= w.stop) break;
+      const cents = Math.round(((w.renew && on >= w.renew ? w.after : w.before) * every) / 12);
+      if (cents > 0) put(m, "projected", cents, r.id);
+    }
+  }
+  return fwd.map((p) => {
+    const x = slot.get(p.key);
+    const { value: arr, mrr, plans: counted, ...rest } = p;
+    return { ...rest, value: x.scheduled + x.projected, scheduled: x.scheduled, projected: x.projected, visits: x.visits, projected_visits: x.pv, plans: x.plans.size, arr };
+  });
+}
+
+// The top's ARR view by month (Nov 15; the bars, Nov 16: the recurring
+// revenue each month): ARR today (the big number), its change since the
+// period began (the end of the month before its first) in $ and %, this
+// month's change (since the end of last month), the plans counted, MRR
+// (ARR / 12: the average a month), the period's recurring revenue (`sum`,
+// done and still scheduled), and a point per month. No plan at all: total
+// null (the screen shows "-").
+// → { period: "months", range, from, to, label, total, change, pct, month_change, plans, mrr, sum, done, scheduled, grain: "month", points, through }
+export function arrMonthView(plans, jobs, range, today) {
+  const toMonth = today.slice(0, 7);
+  let fromMonth = range === "6m" ? addMonths(toMonth, -5) : range === "ytd" ? `${toMonth.slice(0, 4)}-01` : addMonths(toMonth, -11);
+  if (range === "all") {
+    const first = list(plans).map(planWindow).filter(Boolean).reduce((a, w) => (!a || w.start < a ? w.start : a), "");
+    fromMonth = first && first.slice(0, 7) < toMonth ? first.slice(0, 7) : toMonth;
+  }
+  if (fromMonth < addMonths(toMonth, -(MAX_ARR_MONTHS - 1))) fromMonth = addMonths(toMonth, -(MAX_ARR_MONTHS - 1));
+  const base = { period: "months", range, from: `${fromMonth}-01`, to: today, label: monthSpan(fromMonth, toMonth), grain: "month", through: today };
+  if (!list(plans).length) return { ...base, total: null, change: null, pct: null, month_change: null, plans: 0, mrr: null, sum: null, done: null, scheduled: null, grain: null, points: [] };
+  const points = revenueMonths(plans, jobs, fromMonth, toMonth, today);
+  const now = arrAt(plans, today);
+  const before = arrOn(plans, addLocalDays(`${fromMonth}-01`, -1));
+  const lastMonth = arrOn(plans, addLocalDays(`${toMonth}-01`, -1));
+  const change = now.cents - before;
+  const add = (k) => points.reduce((a, x) => a + (x[k] || 0), 0);
+  return {
+    ...base, total: now.cents, change, pct: before > 0 ? Math.round((change / before) * 1000) / 10 : null,
+    month_change: now.cents - lastMonth, plans: now.plans, mrr: Math.round(now.cents / 12), sum: add("value"), done: add("done"), scheduled: add("scheduled"), points,
+  };
+}
+
 // The top's ARR view ahead (Nov 16, the default ARR period): ARR today (the
-// big number, as every ARR view has it), the plans counted and MRR; ARR at
-// the end of this month and the 11 after it; where it ends up ("In 12
-// months": the last month's end) and the change to it ($ and %). No plan at
-// all: total null (the screen shows "-").
-// → { period: "months", range: "next12", ahead: true, from, to, label, total, end, change, pct, plans, mrr, grain: "month", points, through }
+// big number, as every ARR view has it), the plans counted and MRR (ARR /
+// 12: the average a month); a bar for this month and the 11 after it, each
+// the recurring revenue that lands in it (revenueAhead), and the 12 months'
+// total (`sum`, close to the ARR), how much of it is on the schedule and how
+// much projected; ARR at the last month's end ("end") and the change to it.
+// No plan at all: total null (the screen shows "-").
+// → { period: "months", range: "next12", ahead: true, from, to, label, total, end, change, pct, plans, mrr, sum, scheduled, projected, grain: "month", points, through }
 export const ARR_AHEAD_MONTHS = 12;
-export function arrForwardView(plans, today, months = ARR_AHEAD_MONTHS) {
+export function arrForwardView(plans, jobs, today, months = ARR_AHEAD_MONTHS) {
   const fromMonth = today.slice(0, 7), toMonth = addMonths(fromMonth, months - 1);
   const base = { period: "months", range: "next12", ahead: true, from: today, to: monthEnd(toMonth), label: monthSpan(fromMonth, toMonth), grain: "month", through: today };
-  if (!list(plans).length) return { ...base, total: null, end: null, change: null, pct: null, plans: 0, mrr: null, grain: null, points: [] };
-  const points = arrForward(plans, fromMonth, months, today);
+  if (!list(plans).length) return { ...base, total: null, end: null, change: null, pct: null, plans: 0, mrr: null, sum: null, scheduled: null, projected: null, grain: null, points: [] };
+  const points = revenueAhead(plans, jobs, fromMonth, months, today);
   const now = arrAt(plans, today);
-  const end = points.length ? points[points.length - 1].value : now.cents;
+  const end = points.length ? points[points.length - 1].arr : now.cents;
   const change = end - now.cents;
-  return { ...base, total: now.cents, end, change, pct: now.cents > 0 ? Math.round((change / now.cents) * 1000) / 10 : null, plans: now.plans, mrr: Math.round(now.cents / 12), points };
+  const add = (k) => points.reduce((a, x) => a + (x[k] || 0), 0);
+  return {
+    ...base, total: now.cents, end, change, pct: now.cents > 0 ? Math.round((change / now.cents) * 1000) / 10 : null, plans: now.plans, mrr: Math.round(now.cents / 12),
+    sum: add("value"), scheduled: add("scheduled"), projected: add("projected"), points,
+  };
 }
 
 // ------------------------------------------------------------ the Money card
