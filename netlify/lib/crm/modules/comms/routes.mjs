@@ -35,6 +35,7 @@ import { listInbox, getConversation, threadPage, messageView, conversationsOf, m
 import { countsOf, INBOXES_DEFAULTS, textingNumbers, defaultNumber } from "./inboxes.mjs";
 import { REVIEWS_DEFAULTS } from "./reviews.mjs";
 import { CANONICAL_ORIGIN } from "../../core/context.mjs";
+import { draftsReady } from "./drafts.mjs";
 
 const inboxList = async () => ((await getSetting("inboxes").catch(() => INBOXES_DEFAULTS)) || INBOXES_DEFAULTS).list || [];
 const LIST_CHANNELS = ["sms", "email", "note"];
@@ -194,6 +195,8 @@ async function allThreads(ctx, contact, convs, tech) {
     extras = {
       numbers: nums.map((n) => ({ e164: n.e164, label: n.label, default: !!def && def.e164 === n.e164 })),
       links: { review: (rev && rev.link) || REVIEWS_DEFAULTS.link, website: `${CANONICAL_ORIGIN}/`, booking: `${CANONICAL_ORIGIN}/get-quote.html` },
+      // the Suggested reply (drafts.mjs): only with the Anthropic key set, for who may send
+      drafts: draftsReady() && ctx.can("messages:send"),
     };
   }
   return {

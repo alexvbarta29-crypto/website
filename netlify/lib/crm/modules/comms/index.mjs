@@ -11,6 +11,7 @@
 //   reviews.mjs        Google reviews (read-only poll), matching, the review sequence
 //   email-layout.mjs   the branded email layout; html-sanitize.mjs imported HTML
 //   import-rotor.mjs   Rotor's messages, campaigns, templates and pin types
+//   drafts.mjs         the Suggested reply: a draft from Claude for the message box (never sent from there)
 //
 // Nothing leaves the site from here until an owner connects Twilio and
 // Postmark (Settings → Integrations): the drivers below are only handed out
@@ -46,6 +47,7 @@ import { ratingRoutes, portalRoutes } from "./ratings.mjs";
 import { startFollowup } from "./blast.mjs";
 import { INBOXES_DEFAULTS, validateInboxes, ENGAGEMENT_DEFAULTS, validateEngagement, SMS_PRICING_DEFAULTS, validateSmsPricing } from "./inboxes.mjs";
 import { mcpTools } from "./mcp.mjs";
+import { draftRoutes } from "./drafts.mjs";
 
 // The drivers (registered, not switched on: adapters/index.mjs decides the mode).
 for (const mode of ["test", "live"]) {
@@ -126,7 +128,7 @@ export default defineModule({
     engagement: { defaults: { ...ENGAGEMENT_DEFAULTS, numbers: [] }, validate: validateEngagement, perm: "settings:messaging" },
     sms_pricing: { defaults: { ...SMS_PRICING_DEFAULTS }, validate: validateSmsPricing, perm: "settings:messaging" },
   },
-  routes: [...inboxRoutes, ...campaignRoutes, ...reviewRoutes, ...ratingRoutes, ...setupRoutes, ...hookRoutes],
+  routes: [...inboxRoutes, ...campaignRoutes, ...reviewRoutes, ...ratingRoutes, ...setupRoutes, ...hookRoutes, ...draftRoutes],
   // the customer's star page (in-app ratings, off until the switch)
   portalRoutes,
   events: reviewListeners,
