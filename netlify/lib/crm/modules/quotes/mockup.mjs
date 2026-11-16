@@ -270,14 +270,20 @@ export async function askClaude({ bytes, w, h }, { env = process.env, fetchImpl 
   };
   const t0 = performance.now();
   const took = () => Math.round(performance.now() - t0);
+  const send = (b, beta) => fetchImpl(CLAUDE_URL, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": CLAUDE_VERSION, ...(beta ? { "anthropic-beta": CLAUDE_BETA } : {}) },
+    body: JSON.stringify(b),
+    signal: AbortSignal.timeout(Math.max(1000, timeoutMs - took())),
+  });
   let res;
   try {
-    res = await fetchImpl(CLAUDE_URL, {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": CLAUDE_VERSION, "anthropic-beta": CLAUDE_BETA },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(timeoutMs),
-    });
+    res = await send(body, true);
+    // an account without the decline-fallback beta answers 400 at once: ask again without it
+    if (res.status === 400) {
+      const { fallbacks, ...plain } = body;
+      res = await send(plain, false);
+    }
   } catch (e) {
     const timeout = e && (e.name === "TimeoutError" || e.name === "AbortError");
     console.error(`crm:mockup: Claude ${timeout ? "timed out" : "didn't answer"} after ${took()} ms`);

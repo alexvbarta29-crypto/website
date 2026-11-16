@@ -73,7 +73,7 @@ for (const device of ["iphone13", "iphonese"]) {
         assert.equal(await title(f), "Services & pricing");
         assert.ok(await backShown(f), "the round back");
         assert.equal(await f.$$eval("#view .set-grp ul.list", (els) => els.length), 1, "one inset card");
-        assert.deepEqual(await f.$$eval("#view .set-grp .set-row .nm", (els) => els.map((e) => e.textContent)), ["Prices & price book", "Discounts", "Plans & perks", "Agreements", "Checklists", "Crew & forecast"]);
+        assert.deepEqual(await f.$$eval("#view .set-grp .set-row .nm", (els) => els.map((e) => e.textContent)), ["Prices & price book", "Discounts", "Estimate templates", "Plans & perks", "Agreements", "Checklists", "Crew & forecast"]);
         assert.deepEqual(await screenProblems(f), [], "the group page passes the phone checks");
         await still(f);
         await shot(page, `settings-group-${device}-${theme}`);

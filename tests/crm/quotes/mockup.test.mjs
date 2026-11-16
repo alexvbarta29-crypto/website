@@ -224,6 +224,13 @@ test("askClaude: a timeout, a refused key and a cut-off answer each come back as
   clearTimeout(keep);
   assert.deepEqual(await M.askClaude(photo, { env, fetchImpl: async () => new Response("{}", { status: 401 }) }), { ok: false, reason: "key_refused" });
   assert.deepEqual(await M.askClaude(photo, { env, fetchImpl: async () => new Response("{}", { status: 400 }) }), { ok: false, reason: "model_error" });
+  // a 400 (the account lacks the fallback beta) is asked once more without it
+  const sent = [];
+  const retry = await M.askClaude(photo, { env, fetchImpl: async (u, o) => { sent.push(o); return sent.length === 1 ? new Response("{}", { status: 400 }) : Response.json({ stop_reason: "end_turn", content: [{ type: "text", text: "{\"lines\":[]}" }] }); } });
+  assert.equal(retry.ok, true);
+  assert.equal(sent.length, 2);
+  assert.equal("anthropic-beta" in sent[1].headers, false);
+  assert.equal("fallbacks" in JSON.parse(sent[1].body), false);
   assert.deepEqual(await M.askClaude(photo, { env, fetchImpl: async () => Response.json({ stop_reason: "max_tokens", content: [{ type: "text", text: "{\"house" }] }) }), { ok: false, reason: "unusable" });
   assert.deepEqual(await M.askClaude(photo, { env, fetchImpl: async () => { throw new TypeError("fetch failed"); } }), { ok: false, reason: "unreachable" });
   assert.deepEqual(await M.askClaude(photo, { env: {} }), { ok: false, reason: "no_key" });
