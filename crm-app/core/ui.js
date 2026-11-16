@@ -390,6 +390,7 @@ export function sheet({ title = "", body = raw(""), onClose, events, className =
       back.classList.remove("on");
       const i = open.indexOf(api);
       if (i >= 0) open.splice(i, 1);
+      sheetDepth();
       setTimeout(() => { el.remove(); back.remove(); }, 260);
       if (prevFocus && prevFocus.focus) { try { prevFocus.focus({ preventScroll: true }); } catch (e) { /* gone */ } }
       if (onClose) onClose();
@@ -440,8 +441,19 @@ export function sheet({ title = "", body = raw(""), onClose, events, className =
   el.addEventListener("touchend", dragEnd);
   el.addEventListener("touchcancel", dragEnd);
   open.push(api);
-  requestAnimationFrame(() => { back.classList.add("on"); el.classList.add("on"); try { el.focus({ preventScroll: true }); } catch (e) { /* old Safari */ } });
+  requestAnimationFrame(() => {
+    back.classList.add("on");
+    el.classList.add("on");
+    // (a tall sheet on a phone: the screen behind steps back, iOS's card stack; crm.css, motion only)
+    if (!closed) { api.deep = (typeof innerHeight !== "number" || el.getBoundingClientRect().height > innerHeight * 0.6); sheetDepth(); }
+    try { el.focus({ preventScroll: true }); } catch (e) { /* old Safari */ }
+  });
   return api;
+}
+// body.sheet-deep while a tall sheet is open (the screen behind steps back; crm.css "premium")
+function sheetDepth() {
+  if (typeof document === "undefined" || !document.body || !document.body.classList) return;
+  document.body.classList.toggle("sheet-deep", open.some((s) => s.deep));
 }
 
 export const sheetOpen = () => open.length > 0;
@@ -1652,6 +1664,7 @@ export function scrollEdge() {
   const v = document.getElementById("view");
   if (!app || !v) return;
   app.classList.toggle("scrolled", v.scrollTop > 2);
+  if (v.querySelectorAll) for (const i of v.querySelectorAll("img[data-house]:not(.ld)")) if (i.complete) i.classList.add("ld");
   const t = document.getElementById("top-title");
   if (!t) return;
   // (the bar's title is empty, or drawn for screen readers only, while the page shows the name)
@@ -1703,6 +1716,10 @@ if (typeof document !== "undefined" && typeof document.addEventListener === "fun
     if (!e.target || e.target.id !== "view" || edgeRaf) return;
     edgeRaf = requestAnimationFrame(() => { edgeRaf = 0; scrollEdge(); });
   }, { capture: true, passive: true });
+  // a house picture fades in once it has loaded (crm.css: only with motion; a failed one shows its blank)
+  const pictured = (e) => { const i = e.target; if (i && i.tagName === "IMG" && i.hasAttribute && i.hasAttribute("data-house")) i.classList.add("ld"); };
+  document.addEventListener("load", pictured, true);
+  document.addEventListener("error", pictured, true);
   // the ticks every screen gets: a long press, a switch, a segmented tap
   document.addEventListener("rs-hold", () => haptic(), true);
   document.addEventListener("click", (e) => {

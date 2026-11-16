@@ -1428,3 +1428,16 @@ body.crm:not(.page) ::selection{background:var(--coral-ring)}
   .app.big-top.title-own .top-rnd{margin-left:auto}
 }
 @keyframes mo-peek{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+/* a tall sheet on a phone (the Menu, a sheet page, Collect Payment): the screen behind steps back and
+   rounds its corners, iOS's card stack (core/ui.js sheetDepth); with motion only, so Reduce Motion
+   keeps the page exactly where it is */
+@media (max-width:899px) and (prefers-reduced-motion:no-preference){
+  .app{transform-origin:50% 0;transition:transform var(--t-slow) var(--ease-out),border-radius var(--t-slow) var(--ease-out)}
+  body.sheet-deep{background:#000}
+  body.sheet-deep .app{transform:translateY(calc(var(--top) + 4px)) scale(.94);border-radius:14px;overflow:hidden}
+  /* a house picture fades in when it has loaded, over its blank */
+  img[data-house]{transition:opacity var(--t-slow) var(--ease-out)}
+  img[data-house]:not(.ld){opacity:0}
+}
+/* Home's warm glow at the top is Home's: the Schedule (its own head too) keeps the plain canvas */
+@media (max-width:899px){.app.own-head:not(.at-home) .top{background:var(--mist)}}
