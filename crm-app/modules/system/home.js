@@ -47,6 +47,8 @@ import { dateLong, dateShort, plural, dateTime, initials, clock, time as fmtTime
 import { uuid } from "../../core/api.js";
 import * as router from "../../core/router.js";
 import { flyraLine, monthBars, srTable } from "./home-charts.js";
+// (the premium pass: the big number climbs once per view per page load, core/ui.js countUpText)
+import { countUpText } from "../../core/ui.js";
 
 // The stylesheet, loaded once; the screen waits for it (a second at most),
 // so its first paint is already laid out and the chart measures its card.
@@ -643,6 +645,7 @@ export default {
     if (this._off) { this._off(); this._off = null; }
     const root = view.querySelector(".hm");
     if (!root || !ctx) return;
+    if (s.ui && s.ui.money) countUpText(root.querySelector(".hm-mbig"), { key: "home-money-" + s.ui.money.view });
     const off = [];
     off.push(delegate(root, {
       "click [data-hm]": (e, el) => {

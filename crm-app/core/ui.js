@@ -289,7 +289,9 @@ export function toast(message, { bad = false, ms = 2600 } = {}) {
   if (!box) return;
   const t = document.createElement("div");
   t.className = "toast" + (bad ? " bad" : "");
+  // (a bad one leads with a small alert mark; the words stay the toast's text for screen readers)
   t.textContent = String(message);
+  if (bad && typeof t.insertAdjacentHTML === "function") t.insertAdjacentHTML("afterbegin", '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.2M12 16.3v.2"/></svg>');
   t.setAttribute("role", bad ? "alert" : "status");
   // one at a time: a newer toast replaces the one showing (a stack covers the buttons)
   while (box.firstChild) box.removeChild(box.firstChild);
@@ -341,7 +343,7 @@ export const addressHold = (line) => attrs(addressAttrs(line));
 // The address hold's answer: the clipboard, a light buzz, a toast. quiet: no toast when it fails
 // (the hold tries again when the finger lifts, see below).
 const copied = () => {
-  try { if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") navigator.vibrate(12); } catch (e) { /* no buzz */ }
+  haptic(12);
   toast("Address copied");
 };
 const notCopied = () => toast("Couldn't copy it. Press and hold the text to select it.", { bad: true });
@@ -395,25 +397,48 @@ export function sheet({ title = "", body = raw(""), onClose, events, className =
   };
   back.addEventListener("click", () => api.close());
   el.querySelector("[data-sheet-x]").addEventListener("click", () => api.close());
-  // swipe down to close (from the handle/header, or the body when scrolled to the top)
-  let y0 = null, dy = 0;
+  // drag down to close (from the grabber or the head, or the body scrolled to the top), iOS's way:
+  // the sheet follows the finger and the backdrop lightens with it; past a quarter of its height
+  // (at most 120 px) or a quick flick down it goes, else it springs back. Pulled up from the head it
+  // gives a little and comes back (a rubber band). Not on a desk's centred dialog.
+  let y0 = null, dy = 0, head = false, moved = false, lastY = 0, lastT = 0, vy = 0, h = 1;
+  const settle = () => { el.style.transition = ""; el.style.transform = ""; back.style.transition = ""; back.style.opacity = ""; };
   el.addEventListener("touchstart", (e) => {
-    const fromHead = e.target.closest(".grab, .sheet-head");
-    if (!fromHead && bodyEl.scrollTop > 0) { y0 = null; return; }
-    y0 = e.touches[0].clientY; dy = 0;
+    y0 = null;
+    if (e.touches.length !== 1 || closed) return;
+    if (typeof matchMedia === "function" && matchMedia("(min-width: 900px)").matches) return;
+    head = !!e.target.closest(".grab, .sheet-head");
+    if (!head && (bodyEl.scrollTop > 0 || e.target.closest("input, textarea, select, .rs-cols, .rs-tiles, [data-no-drag]"))) return;
+    y0 = lastY = e.touches[0].clientY; lastT = moNow(); dy = 0; vy = 0; moved = false;
+    h = el.getBoundingClientRect().height || 1;
   }, { passive: true });
   el.addEventListener("touchmove", (e) => {
     if (y0 === null) return;
-    dy = Math.max(0, e.touches[0].clientY - y0);
-    if (dy > 0) { el.style.transition = "none"; el.style.transform = `translateY(${dy}px)`; }
+    const y = e.touches[0].clientY, now = moNow();
+    if (now > lastT) vy = vy * 0.4 + ((y - lastY) / (now - lastT)) * 0.6;
+    lastY = y; lastT = now;
+    const d = y - y0;
+    // (the body pulled up is the body scrolling, not the sheet)
+    if (!moved && d < 0 && !head) { y0 = null; return; }
+    if (!moved && Math.abs(d) < 3) return;
+    moved = true;
+    dy = d >= 0 ? d : -Math.min(28, Math.sqrt(-d) * 2.2);
+    el.style.transition = "none";
+    el.style.transform = `translateY(${dy}px)`;
+    back.style.transition = "none";
+    back.style.opacity = String(Math.max(0.15, 1 - Math.max(0, dy) / h));
   }, { passive: true });
-  el.addEventListener("touchend", () => {
+  const dragEnd = () => {
     if (y0 === null) return;
-    el.style.transition = "";
-    el.style.transform = "";
-    if (dy > 80) api.close();
-    y0 = null; dy = 0;
-  });
+    y0 = null;
+    if (!moved) return;
+    moved = false;
+    settle();
+    if (dy > Math.min(h / 4, 120) || (dy > 16 && vy > 0.45)) { haptic(); api.close(); }
+    dy = 0;
+  };
+  el.addEventListener("touchend", dragEnd);
+  el.addEventListener("touchcancel", dragEnd);
   open.push(api);
   requestAnimationFrame(() => { back.classList.add("on"); el.classList.add("on"); try { el.focus({ preventScroll: true }); } catch (e) { /* old Safari */ } });
   return api;
@@ -1575,3 +1600,113 @@ export function segSlide(on, from) {
   return true;
 }
 if (typeof document !== "undefined" && typeof document.addEventListener === "function") document.addEventListener("click", segTap, true);
+
+// ------------------------------------------------------------ premium (Nov 16, the owner: "make everything feel a little bit more premium")
+//
+//   haptic()          a light tick under the finger: navigator.vibrate where there is one, else iOS 18's
+//                     own switch tick (a hidden <input type=checkbox switch> toggled through its label,
+//                     which Safari answers with the Taptic Engine); nothing elsewhere. Only after the
+//                     person has touched the page, at most one per 60 ms. Wired here for every screen: a
+//                     long press, a switch, a segmented tap; the sheet calls it when flicked away, the
+//                     address hold when it copies, the + when it opens.
+//   scrollEdge()      the bar over a screen separates from it once something has scrolled under it
+//                     (iOS's scroll edge: .app.scrolled, a hairline); on a page whose name is in the page
+//                     (.rs-name, the bar's title empty: a customer, a lead) the name comes into the bar
+//                     once it has gone under it (.app.peek, #top-title[data-peek]). The router calls it
+//                     after each paint; scrolling #view calls it once a frame.
+//   countUpText(el, { key, ms })   countUp for a number already drawn as text ("$3,815"): its own text
+//                     node counts up (the markup around it stays), once per key per page load.
+let hapticAt = 0;
+export function haptic(ms = 10) {
+  if (typeof document === "undefined" || typeof navigator === "undefined") return false;
+  try { if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return false; } catch (e) { /* older: try */ }
+  const now = Date.now();
+  if (now - hapticAt < 40) return false;
+  hapticAt = now;
+  try { if (typeof navigator.vibrate === "function") return navigator.vibrate(ms) !== false; } catch (e) { return false; }
+  if (!document.head || !/iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent || "") || !("ontouchend" in document)) return false;
+  try {
+    const l = document.createElement("label");
+    l.setAttribute("aria-hidden", "true");
+    l.style.display = "none";
+    const i = document.createElement("input");
+    i.type = "checkbox";
+    i.tabIndex = -1;
+    i.setAttribute("switch", "");
+    l.appendChild(i);
+    // (the tick's own click and change never reach the page's listeners)
+    const stop = (e) => e.stopPropagation();
+    for (const ev of ["click", "change", "input"]) { l.addEventListener(ev, stop); i.addEventListener(ev, stop); }
+    document.head.appendChild(l);
+    l.click();
+    l.remove();
+    return true;
+  } catch (e) { return false; }
+}
+
+const PEEK = ".rs-name h2";
+let edgeRaf = 0;
+export function scrollEdge() {
+  if (typeof document === "undefined") return;
+  const app = document.getElementById("app");
+  const v = document.getElementById("view");
+  if (!app || !v) return;
+  app.classList.toggle("scrolled", v.scrollTop > 2);
+  const t = document.getElementById("top-title");
+  if (!t) return;
+  // (the bar's title is empty, or drawn for screen readers only, while the page shows the name)
+  const named = v.querySelector(PEEK);
+  let under = false;
+  if (named && named.getClientRects().length) under = named.getBoundingClientRect().bottom < v.getBoundingClientRect().top + 4;
+  const quiet = app.classList.contains("peek") || !t.textContent.trim() || t.getBoundingClientRect().width < 2;
+  const peek = named && under && quiet ? named.textContent.trim().slice(0, 60) : "";
+  if (peek) { if (t.getAttribute("data-peek") !== peek) t.setAttribute("data-peek", peek); app.classList.add("peek"); }
+  else { app.classList.remove("peek"); t.removeAttribute("data-peek"); }
+}
+
+export function countUpText(el, { key = null, ms = 600 } = {}) {
+  if (!el) return false;
+  const walker = document.createTreeWalker(el, 4);
+  let node = null;
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) if (/\d/.test(n.data) && !(n.parentElement && n.parentElement.closest(".sr"))) node = n;
+  if (!node) return false;
+  const text = node.data;
+  const m = text.match(/^(\s*[^\d-]*)(-?[\d,]+(?:\.(\d+))?)(.*)$/s);
+  if (!m) return false;
+  const end = Number(m[2].replace(/,/g, ""));
+  if (!Number.isFinite(end) || !end) return false;
+  const k = key || null;
+  if (!motionOk() || (k && counted.has(k))) { if (k) counted.add(k); return false; }
+  if (k) counted.add(k);
+  const dec = m[3] ? m[3].length : 0;
+  const fmt = (x) => m[1] + x.toLocaleString("en-US", { minimumFractionDigits: dec, maximumFractionDigits: dec }) + m[4];
+  const w = el.getBoundingClientRect().width;
+  const was = el.style.minWidth;
+  if (w && getComputedStyle(el).display !== "inline") el.style.minWidth = w + "px";
+  el.classList.add("mo-count");
+  const t0 = moNow();
+  const step = () => {
+    if (!node.isConnected) return;
+    const p = Math.min(1, (moNow() - t0) / ms);
+    if (p >= 1) { node.data = text; el.style.minWidth = was; el.classList.remove("mo-count"); return; }
+    const x = end * (1 - Math.pow(1 - p, 3));
+    node.data = fmt(dec ? Math.round(x * 10 ** dec) / 10 ** dec : Math.round(x));
+    requestAnimationFrame(step);
+  };
+  node.data = fmt(0);
+  requestAnimationFrame(step);
+  return true;
+}
+
+if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
+  document.addEventListener("scroll", (e) => {
+    if (!e.target || e.target.id !== "view" || edgeRaf) return;
+    edgeRaf = requestAnimationFrame(() => { edgeRaf = 0; scrollEdge(); });
+  }, { capture: true, passive: true });
+  // the ticks every screen gets: a long press, a switch, a segmented tap
+  document.addEventListener("rs-hold", () => haptic(), true);
+  document.addEventListener("click", (e) => {
+    const el = e.target && e.target.closest ? e.target.closest('[role="switch"], .rs-seg-b, .seg, .rs-chip') : null;
+    if (el && !el.disabled && el.getAttribute("aria-disabled") !== "true") haptic();
+  }, true);
+}

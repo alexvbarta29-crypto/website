@@ -54,7 +54,7 @@
 // the page's: the plain title, a back button, its one action. CSS decides
 // which set shows; one codebase.
 
-import { html, raw, render, sheet, icon, attrs, toast, rnd, actionSheet, seg, setMoreExtra, armMoreExtra, revealOn, addressHold } from "./ui.js";
+import { html, raw, render, sheet, icon, attrs, toast, rnd, actionSheet, seg, setMoreExtra, armMoreExtra, revealOn, addressHold, haptic } from "./ui.js";
 import { initials, time as fmtTime } from "./format.js";
 import { api } from "./api.js";
 import * as router from "./router.js";
@@ -443,7 +443,7 @@ export function update(path) {
     fab.setAttribute("aria-label", "New, or search");
     fab.setAttribute("aria-haspopup", "dialog");
     render(fab, icon("plus"));
-    fab.addEventListener("click", () => openQuick({ creates: quickCreates(st.creates, st.can), search: st.can("contacts:read_all"), can: st.can }));
+    fab.addEventListener("click", () => { haptic(); openQuick({ creates: quickCreates(st.creates, st.can), search: st.can("contacts:read_all"), can: st.can }); });
     document.getElementById("app").appendChild(fab);
   } else if (!want && fab) fab.remove();
 }
