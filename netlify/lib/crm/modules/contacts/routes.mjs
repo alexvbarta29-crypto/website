@@ -431,7 +431,7 @@ async function addPropertyRoute(ctx) {
   return { status: 201, data: { property: view(rec.data) }, etag: rec.etag };
 }
 
-async function readableProperty(ctx, id) {
+export async function readableProperty(ctx, id) {
   if (!isId(id, "property")) throw new NotFoundError("That property isn't there.");
   const got = await getRecord("property", id);
   if (!got || got.data.deleted_at) throw new NotFoundError("That property isn't there.");
