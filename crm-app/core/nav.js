@@ -925,8 +925,8 @@ function searchBox() {
 //   openQuick({ creates, search, can })   the round + (Flyra's, outlined): the
 //       screen blurs, a search field sits at the top ("Search customers,
 //       jobs, tasks...": GET /search, people and Q-/INV- numbers), and the
-//       things to make stack above the + as pills with round icons: Lead or
-//       customer, Quote, Job, Invoice, Plan, Task (each only for someone who
+//       things to make stack above the + as pills with round icons: Lead,
+//       Customer, Quote, Job, Invoice, Plan, Task (each only for someone who
 //       may). The + turns into an ×. A tap outside, the ×, Escape or going
 //       anywhere closes it.
 // (It lives here, not in a file of its own, so a phone that starts with no
@@ -934,20 +934,23 @@ function searchBox() {
 
 // The things to make: one list for the phone's + and the desk's New, the
 // most used first (a call comes in: a lead, a quote, a job), each once. The
-// office's full form makes a lead or a customer; someone who may not use it
-// (a tech at a door) gets the quick lead instead. From the manifests'
+// office's full form makes a lead (Lead) or a customer (Customer: the same
+// form, ?as=customer; the owner, Nov 2026: "Lead and then Customer, two
+// separate buttons"); someone who may not use it (a tech at a door) gets the
+// quick lead as Lead instead. From the manifests'
 // creates (which nav.js already kept to this person's permissions and
 // routes).
 // (The Rotor guide's order, F8: Request shows once a module registers its create, /requests/new.)
 const MAKE = [
-  ["/contacts/new", "Lead or customer", "userplus", "contacts:write"], ["/leads/new", "Lead", "target"], ["/quotes/new", "Quote", "clipboard"], ["/jobs/new", "Job", "hammer"],
+  ["/contacts/new", "Lead", "target", "contacts:write"], ["/contacts/new?as=customer", "Customer", "user", "contacts:write"], ["/leads/new", "Lead", "target"],
+  ["/quotes/new", "Quote", "clipboard"], ["/jobs/new", "Job", "hammer"],
   ["/requests/new", "Request", "flag"], ["/tasks/new", "Task", "check"], ["/invoices/new", "Invoice", "receipt"], ["/plans/new", "Plan", "swap"],
 ];
 // (Log a call and Text someone are their own screens' +: Calls, the Inbox.)
 export function quickCreates(creates = [], can = () => false) {
   const have = new Set(creates.map((c) => c.path));
   const full = can("contacts:write") && router.has("/contacts/new");
-  return MAKE.filter(([path, , , perm]) => (perm ? can(perm) && router.has(path) : have.has(path) && !(path === "/leads/new" && full))).map(([path, label, ic]) => ({ path, label, icon: ic }));
+  return MAKE.filter(([path, , , perm]) => (perm ? can(perm) && router.has(path.split("?")[0]) : have.has(path) && !(path === "/leads/new" && full))).map(([path, label, ic]) => ({ path, label, icon: ic }));
 }
 
 let openQ = null;
@@ -1256,14 +1259,17 @@ function reportProblem() {
 
 // ------------------------------------------------------------ Light, Dark or Automatic
 //
-// Light, Dark or Automatic (the owner, Nov 2026: Flyra's
-// dark look first, Rotor's light one a tap away). The choice belongs to the
-// phone or computer it was made on (localStorage "crm-theme"; a browser
-// that keeps nothing gets the default, Dark). crm.css holds every color as
-// a token and html[data-theme] picks the set: "light", or dark otherwise.
-// Automatic follows the phone's own setting and changes with it. The
-// office shell around the frame (/office) hears crm:theme and matches its
-// own background and status bar color.
+// Light, Dark or Automatic. White first (the owner, Nov 2026: "make it
+// white, not black. It's easier to read white"): Light is the default for
+// everyone, Dark and Automatic a tap away. The choice belongs to the phone
+// or computer it was made on (localStorage "crm-theme"; a browser that keeps
+// nothing gets the default, Light). A phone that had picked Dark before
+// that is moved to Light once ("crm-theme-white" marks it moved); after
+// that its own choice is kept. crm.css holds every color as a token and
+// html[data-theme] picks the set (the shell starts as "light", so nothing
+// flashes black). Automatic follows the phone's own setting and changes
+// with it. The office shell around the frame (/office) hears crm:theme and
+// matches its own background and status bar color.
 //
 //   applyTheme()       at start (main.js), before the first screen draws
 //   themeChoice()      "light" | "dark" | "auto"
@@ -1272,14 +1278,31 @@ function reportProblem() {
 //                      button and My account)
 
 export const THEME_KEY = "crm-theme";
+export const THEME_MOVED_KEY = "crm-theme-white";
 export const THEMES = Object.freeze([["light", "Light"], ["dark", "Dark"], ["auto", "Automatic"]]);
-export const DEFAULT_THEME = "dark";
+export const DEFAULT_THEME = "light";
 // the canvas of each (the status bar and the frame behind the app match it)
 export const CANVAS = Object.freeze({ light: "#f6f6f8", dark: "#111214" });
 
 let mem = null;   // a browser that keeps nothing: the choice lasts until the page closes
 const known = (v) => THEMES.some(([k]) => k === v);
+// Once per phone: a Dark picked before Light became the default turns Light (true when it did).
+let movedOnce = false;
+export function moveToLight() {
+  if (movedOnce) return false;
+  movedOnce = true;
+  try {
+    if (localStorage.getItem(THEME_MOVED_KEY)) return false;
+    const was = localStorage.getItem(THEME_KEY);
+    if (was === "dark") localStorage.setItem(THEME_KEY, "light");
+    localStorage.setItem(THEME_MOVED_KEY, "1");
+    return was === "dark";
+  } catch (e) { return false; }
+}
+// (tests: forget that this page already looked)
+export const _resetThemeMove = () => { movedOnce = false; mem = null; };
 export function themeChoice() {
+  moveToLight();
   let v = null;
   try { v = localStorage.getItem(THEME_KEY); } catch (e) { /* nothing kept here */ }
   return known(v) ? v : known(mem) ? mem : DEFAULT_THEME;
@@ -1311,6 +1334,7 @@ export function applyTheme() {
 
 export function setTheme(v) {
   if (!known(v)) return applyTheme();
+  moveToLight();
   mem = v;
   try { localStorage.setItem(THEME_KEY, v); } catch (e) { /* this browser keeps nothing: for now only */ }
   return applyTheme();

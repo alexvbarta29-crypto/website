@@ -22,13 +22,13 @@ let srv, browser;
 before(async () => { srv = await start(); await srv.seed(); browser = await launch(); });
 after(async () => { await browser?.close(); await srv?.close(); });
 
-async function open(login, device, theme = "dark") {
+async function open(login, device, theme = "light") {
   const p = await phone(browser, srv, { device, office: true });
   await signIn(p, login);
   await p.page.goto("/office");
   let f = await crmFrame(p.page);
   await settled(f);
-  if (theme !== "dark") {
+  if (theme !== "light") {   // (light is the default: the owner, Nov 2026)
     await f.evaluate((t) => localStorage.setItem("crm-theme", t), theme);
     await p.page.reload();
     f = await crmFrame(p.page);
@@ -510,6 +510,151 @@ test("the kit's table on a phone (iphone13): two-line rows, no headers, the empt
     await f.waitForFunction(() => !document.querySelector(".kit-page [aria-busy=true]"));
     assert.deepEqual(await screenProblems(f), []);
     await shot(page, "shell-kit-table-iphone13-light");
+    await p.clean();
+  } finally { await p.close(); }
+});
+
+// Nov 2026, the owner: "Lead and then Customer, two separate buttons", "a little more premium
+// animations", "make it white, not black". The + has Lead and Customer, each opening the one form as
+// itself; with motion on (a phone not set to Reduce Motion) sheets spring up and settle exactly where
+// they rest, the + pills rise in, a screen slides in (and the one left slides away going back), the
+// segmented pill slides, toasts slide down as they go; set to Reduce Motion nothing moves at all. A
+// phone that had picked Dark is moved to Light once, then keeps its own choice.
+const still = (f) => f.waitForFunction(() => document.getAnimations().every((a) => a.playState !== "running" || a.effect.getComputedTiming().iterations === Infinity), null, { timeout: 5000 });
+const moving = (f) => f.evaluate(() => document.getAnimations().filter((a) => a.playState === "running" && a.effect.getComputedTiming().iterations !== Infinity).length);
+async function openMoving(device, { motion = true } = {}) {
+  const p = await phone(browser, srv, { device, office: true, motion });
+  await signIn(p, "olive");
+  await p.page.goto("/office");
+  const f = await crmFrame(p.page);
+  await settled(f);
+  await noInstallCard(p.page);
+  const x = await f.$("[data-moved-x]");
+  if (x) await x.click();
+  return { p, page: p.page, f };
+}
+
+for (const device of ["iphone13", "iphonese"]) {
+  test(`the + (${device}): Lead and then Customer, two buttons, each its own form; with motion the pills rise in and rest in place`, async () => {
+    const { p, page, f } = await openMoving(device);
+    try {
+      assert.equal(await f.evaluate(() => document.documentElement.dataset.theme), "light", "white by default");
+      for (const [i, want] of [[0, { label: "Lead", hash: "#/contacts/new", title: "New lead", lc: "lead", save: "Save lead" }], [1, { label: "Customer", hash: "#/contacts/new?as=customer", title: "New customer", lc: "customer", save: "Save customer" }]]) {
+        await goTo(f, "/today");
+        await f.click("#fab");
+        await f.waitForSelector(".qk.on");
+        assert.ok((await moving(f)) > 0, "the pills are rising");
+        await still(f);
+        const pills = await f.$$eval(".qk-pill", (els) => els.map((e) => ({ t: e.querySelector("span:last-child").textContent, href: e.getAttribute("href"), ic: e.querySelector(".qk-ic svg") ? 1 : 0, op: getComputedStyle(e).opacity, tf: getComputedStyle(e).transform })));
+        assert.deepEqual(pills.slice(0, 3).map((x) => x.t), ["Lead", "Customer", "Quote"], "Lead, then Customer, at the top");
+        assert.ok(pills.every((x) => x.ic && x.op === "1" && x.tf === "none"), "each with its icon, every pill at rest");
+        assert.deepEqual(await screenProblems(f), [], "the + passes the phone checks (44 px, nothing cut off)");
+        if (i === 0) await shot(page, `shell-plus-${device}`);
+        await f.click(`.qk-list li:nth-child(${i + 1}) .qk-pill`);
+        await settled(f, { hash: want.hash });
+        await still(f);
+        assert.equal(await title(f), want.title);
+        assert.equal(await f.$eval("#ct-form [name=lifecycle]", (e) => e.value), want.lc);
+        assert.equal((await f.textContent("#ct-form button[type=submit]")).trim(), want.save);
+      }
+      // "This is" turns the form into the other, keeping what was typed
+      await f.fill("#ct-form [name=first_name]", "Synthetic");
+      await f.selectOption("#ct-form [name=lifecycle]", "lead");
+      await f.waitForFunction(() => document.getElementById("top-title").textContent === "New lead");
+      assert.equal(await f.$eval("#ct-form [name=first_name]", (e) => e.value), "Synthetic");
+      assert.ok(await f.$("#ct-form [name=priority]"), "a lead's priority shows");
+      await p.clean();
+    } finally { await p.close(); }
+  });
+}
+
+test("motion (iphone13): screens slide in and away, the Menu springs up and rests at the bottom, the segmented pill slides, a toast slides down as it goes; a refresh moves nothing", async () => {
+  const { p, page, f } = await openMoving("iphone13");
+  try {
+    const vh = await f.evaluate(() => innerHeight);
+    // the Menu: a spring up, then exactly where it rests
+    await f.click('#tabs [data-tab="menu"]');
+    await f.waitForSelector(".fm-sheet.on");
+    assert.ok(await f.evaluate(() => document.querySelector(".fm-sheet").getAnimations().some((a) => a.transitionProperty === "transform")), "the sheet springs up");
+    await still(f);
+    const d = await box(f, ".fm-sheet");
+    assert.ok(Math.abs(d.bottom - vh) < 1, `resting on the bottom (${d.bottom} vs ${vh})`);
+    assert.equal(await f.$eval(".backdrop.on", (e) => getComputedStyle(e).opacity), "1", "the backdrop dimmed");
+    await page.keyboard.press("Escape");
+    await gone(f, ".fm-sheet");
+    // a screen slides in from the right, and rests where it was drawn
+    await goTo(f, "/contacts");
+    await still(f);
+    const href = await f.$eval("#view a[href^='#/contacts/ct_']", (a) => a.getAttribute("href"));
+    await f.click(`#view a[href="${href}"]`);
+    await f.waitForFunction((h) => location.hash === h, href);
+    assert.ok((await moving(f)) > 0, "the next screen is moving in");
+    await settled(f);
+    await still(f);
+    assert.deepEqual(await f.$$eval("#view > *", (els) => els.map((e) => getComputedStyle(e).transform).filter((t) => t !== "none")), [], "nothing left moved");
+    assert.deepEqual(await screenProblems(f), []);
+    // the segmented pill slides to the tapped tab
+    const seg = await f.$("#view .rs-seg-b[aria-selected=false]");
+    if (seg) {
+      await seg.click();
+      await f.waitForSelector("#view .rs-seg-b.seg-slide[aria-selected=true]", { timeout: 2000 });
+      await still(f);
+    }
+    // a refresh (a poll, a save): nothing moves
+    await f.evaluate(() => import("/crm-app/core/router.js").then((r) => r.refresh()));
+    await f.waitForTimeout(60);
+    assert.equal(await f.evaluate(() => document.querySelectorAll("#view *").length && [...document.querySelectorAll("#view *")].some((e) => e.getAnimations().some((a) => a.effect.getComputedTiming().iterations !== Infinity))), false, "a refresh never animates");
+    // back: the screen left slides away over the list, then is gone
+    await f.click("#top-back");
+    await f.waitForSelector(".mo-ghost", { state: "attached", timeout: 2000 });
+    assert.equal(await f.$eval(".mo-ghost", (g) => [g.getAttribute("aria-hidden"), g.querySelectorAll("[id]").length, g.inert].join()), "true,0,true", "the ghost is out of reach: no ids, inert");
+    await settled(f, { hash: "#/contacts" });
+    await gone(f, ".mo-ghost");
+    // a toast rises, then slides down and fades as it goes
+    await f.evaluate(() => import("/crm-app/core/ui.js").then((m) => m.toast("Synthetic note saved", { ms: 400 })));
+    await f.waitForSelector(".toast.out", { timeout: 2000 });
+    await gone(f, ".toast");
+    await p.clean();
+  } finally { await p.close(); }
+});
+
+test("Reduce Motion (iphonese): nothing moves, nothing is left behind; and a Dark from before is moved to Light once, then kept", async () => {
+  const { p, page, f } = await openMoving("iphonese", { motion: false });
+  try {
+    await f.click("#fab");
+    await f.waitForSelector(".qk.on");
+    assert.equal(await moving(f), 0, "the + just shows");
+    assert.equal(await f.$eval(".qk-pill", (e) => getComputedStyle(e).opacity), "1");
+    await page.keyboard.press("Escape");
+    await goTo(f, "/contacts");
+    const href = await f.$eval("#view a[href^='#/contacts/ct_']", (a) => a.getAttribute("href"));
+    await f.click(`#view a[href="${href}"]`);
+    await f.waitForFunction((h) => location.hash === h, href);
+    assert.equal(await moving(f), 0, "a screen just shows");
+    await settled(f);
+    await f.click("#top-back");
+    await settled(f, { hash: "#/contacts" });
+    assert.equal(await f.$(".mo-ghost"), null, "no ghost");
+    await f.click('#tabs [data-tab="menu"]');
+    await f.waitForSelector(".fm-sheet.on");
+    assert.equal(await moving(f), 0, "a sheet just shows");
+    await page.keyboard.press("Escape");
+    // a phone that picked Dark before Light became the default (no "crm-theme-white" yet)
+    await f.evaluate(() => { sessionStorage.setItem("e2e-unmoved", "1"); localStorage.removeItem("crm-theme-white"); localStorage.setItem("crm-theme", "dark"); });
+    await page.reload();
+    let g = await crmFrame(page);
+    await settled(g);
+    assert.equal(await g.evaluate(() => document.documentElement.dataset.theme), "light", "moved to Light");
+    assert.deepEqual(await g.evaluate(() => [localStorage.getItem("crm-theme"), localStorage.getItem("crm-theme-white")]), ["light", "1"]);
+    assert.equal(await g.evaluate(() => getComputedStyle(document.body).backgroundColor), "rgb(246, 246, 248)");
+    // Dark again, by choice: kept from now on
+    await g.evaluate(() => import("/crm-app/core/nav.js").then((n) => n.setTheme("dark")));
+    await page.reload();
+    g = await crmFrame(page);
+    await settled(g);
+    assert.equal(await g.evaluate(() => document.documentElement.dataset.theme), "dark", "its own choice, kept");
+    assert.equal(await page.$eval('meta[name="theme-color"]', (m) => m.content), "#111214", "the office's status bar follows");
+    await g.evaluate(() => { localStorage.setItem("crm-theme", "light"); sessionStorage.removeItem("e2e-unmoved"); });
     await p.clean();
   } finally { await p.close(); }
 });

@@ -28,7 +28,7 @@ import * as outbox from "./core/outbox.js";
 import { openPhoto } from "./core/camera.js";
 import { applyTheme } from "./core/nav.js";
 
-// Light, Dark or Automatic (this device's choice; Dark by default), before anything draws.
+// Light, Dark or Automatic (this device's choice; Light by default), before anything draws.
 applyTheme();
 
 const framed = (() => { try { return window.parent !== window; } catch (e) { return true; } })();

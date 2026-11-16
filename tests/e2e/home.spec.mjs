@@ -795,7 +795,7 @@ test("on a desk: the sidebar, search and New; Flyra's dashboard at 1440 (the mon
       await fullShot(page, f, `home-desk-${device}-full`);
       // New and the person's menu
       await f.click("#top-new");
-      assert.deepEqual(await f.$$eval("#new-pop a span", (els) => els.map((e) => e.textContent)).then((x) => x.slice(0, 3)), ["Lead or customer", "Quote", "Job"], "the same list as the phone's +");
+      assert.deepEqual(await f.$$eval("#new-pop a span", (els) => els.map((e) => e.textContent)).then((x) => x.slice(0, 4)), ["Lead", "Customer", "Quote", "Job"], "the same list as the phone's +");
       await page.keyboard.press("Escape");
       await p.clean();
     } finally { await p.close(); }

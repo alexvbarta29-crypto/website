@@ -43,9 +43,11 @@ async function officeCookie(srv) {
   return c.split(";")[0].split("=").slice(1).join("=");
 }
 
-export async function phone(browser, srv, { device = "iphone13", office = false, serviceWorkers = "allow" } = {}) {
+// (motion: the app's animations (core/ui.js "motion", crm.css) are on only when asked; every other
+// spec runs as a phone set to Reduce Motion, so a box is measured where it rests, never mid-slide)
+export async function phone(browser, srv, { device = "iphone13", office = false, serviceWorkers = "allow", motion = false } = {}) {
   const d = DEVICES[device];
-  const ctx = await browser.newContext({ viewport: d.viewport, deviceScaleFactor: 1, isMobile: !d.desktop, hasTouch: !d.desktop, userAgent: d.desktop ? DESK_UA : UA, serviceWorkers, baseURL: srv.url });
+  const ctx = await browser.newContext({ viewport: d.viewport, deviceScaleFactor: 1, isMobile: !d.desktop, hasTouch: !d.desktop, userAgent: d.desktop ? DESK_UA : UA, serviceWorkers, baseURL: srv.url, reducedMotion: motion ? "no-preference" : "reduce" });
   const outside = [];
   await ctx.route((url) => url.origin !== srv.url, (route) => { outside.push(route.request().url()); return route.abort(); });
   // every document, frames too: CSP violations are collected, never ignored.
@@ -58,6 +60,10 @@ export async function phone(browser, srv, { device = "iphone13", office = false,
     window.__csp = [];
     window.addEventListener("securitypolicyviolation", (e) => window.__csp.push(`${e.violatedDirective} ${e.blockedURI} (${location.pathname})`));
   });
+  // Light is the default and a Dark from before that is moved to Light once (core/nav.js moveToLight):
+  // a spec that sets "crm-theme" to dark means it, so every phone here counts as already moved
+  // (shell.spec unsets it to see the move itself)
+  await ctx.addInitScript(() => { try { if (!sessionStorage.getItem("e2e-unmoved")) localStorage.setItem("crm-theme-white", "1"); } catch (e) { /* no storage */ } });
   if (office) await ctx.addCookies([{ name: "barta_office", value: await officeCookie(srv), url: srv.url }]);
   const page = await ctx.newPage();
   const errors = [];
