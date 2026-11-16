@@ -18,7 +18,7 @@ import { InputError } from "../../core/errors.mjs";
 import { shape, str, enumValue, bool, arr, isoTime, int } from "../../core/validate.mjs";
 import { lineTotal } from "../../core/money.mjs";
 import { rotorKey } from "../contacts/display.mjs";
-import { yearValue, regularYearValue, saleValueOf } from "./machine.mjs";
+import { yearValue, regularYearValue, saleValueOf, visitsPerYearOf } from "./machine.mjs";
 
 const isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
 const sortOf = (at) => tsKey(new Date(Date.parse(at) || 0));
@@ -281,7 +281,8 @@ const firstDue = (r) => {
 // sv: the sale value (the lines' when the stored one is 0), ay: a year of its visit prices (Home's ARR), ar: 0 when
 // it doesn't renew, tm: its first term's months, sb: who sold it (the leaderboard credits the plan to them),
 // so: the day its first term starts, ry: a year of regular visits when it differs from ay (Home's ARR ahead:
-// a first term's value after it renews; a row without it renews at ay).
+// a first term's value after it renews; a row without it renews at ay), vy: its visits a year (Home's ARR bars:
+// the months between its visits, Nov 16).
 export const planShard = (r) => (r.deleted_at || r.kind === "one_time_series" ? null : "");
 export const planRow = (r) => {
   const nx = nextOrdinal(r);
@@ -290,7 +291,7 @@ export const planRow = (r) => {
     c: r.contact_id, cn: r.contact_name || "", nm: r.name, ck: r.catalog_key, k: r.kind, st: r.status, pr: r.pending_reasons || [],
     nx: nx ? nx.target_month : null, nxs: nx ? nx.status : null, due: firstDue(r), mj: missingJobs(r), ap: !!(r.billing && r.billing.autopay), cr: !!(r.billing && r.billing.card_required),
     ag: r.agreement_status || "none", te: (r.term && r.term.current_term_end) || null, eff: (r.cancel && r.cancel.effective_on) || null, pu: (r.pause && r.pause.until) || null,
-    tw: r.town || null, sv: saleValueOf(r), ay, ...(ry !== ay ? { ry } : {}), so: (r.term && r.term.start_on) || null, ar: r.term && r.term.auto_renew === false ? 0 : 1, tm: (r.term && r.term.initial_months) || 12, cb: r.cancel && r.cancel.clawback_state === "to_bill" ? 1 : 0, im: r.import ? 1 : 0, at: r.created_at, u: r.updated_at, sb: r.sold_by || null,
+    tw: r.town || null, sv: saleValueOf(r), ay, ...(ry !== ay ? { ry } : {}), vy: Math.max(1, r.visits_per_year || visitsPerYearOf(r.frequency)), so: (r.term && r.term.start_on) || null, ar: r.term && r.term.auto_renew === false ? 0 : 1, tm: (r.term && r.term.initial_months) || 12, cb: r.cancel && r.cancel.clawback_state === "to_bill" ? 1 : 0, im: r.import ? 1 : 0, at: r.created_at, u: r.updated_at, sb: r.sold_by || null,
     // after agreement (guide-gaps S16): the first term is over and the plan goes on
     aa: r.term && (r.term.current_term_n || 1) > 1 ? 1 : 0, ...(r.cancel_request && ["open", "contacted", "offered"].includes(r.cancel_request.status) ? { sr: r.cancel_request.priority === "high" ? 2 : 1 } : {}),
     ...(r.kind === "lights_annual" ? { cs: (r.confirmed_seasons || []).slice(-3), wc: waitingSeasons(r) } : {}), ...(r.held ? { hd: r.held.action } : {}),

@@ -228,26 +228,27 @@ test("ARR by month (the owner's Nov 15 ask): ARR at each month's end, the plans 
   assert.deepEqual(ahead.map((x) => [x.key, x.value, x.mrr, x.added]), [["2026-11", 281000, 23417, 1], ["2026-12", null, null, null]]);
 
   // the view: ARR today, its change since the period began and this month, by range
-  const y = K.arrMonthView(plans, "1y", TODAY);
+  const y = K.arrMonthView(plans, [], "1y", TODAY);
   assert.deepEqual([y.range, y.period, y.grain, y.from, y.to, y.label, y.through], ["1y", "months", "month", "2025-12-01", TODAY, "Dec 2025 – Nov 2026", TODAY]);
   assert.deepEqual([y.total, y.change, y.pct, y.month_change, y.plans, y.mrr], [281000, 221000, 368.3, -20000, 7, Math.round(281000 / 12)]);
-  assert.deepEqual(y.points, pts);
-  const six = K.arrMonthView(plans, "6m", TODAY);
+  assert.deepEqual(y.points.map((x) => [x.key, x.arr, x.added, x.lost, x.added_cents, x.lost_cents]), pts.map((x) => [x.key, x.value, x.added, x.lost, x.added_cents, x.lost_cents]), "each month's ARR at its end rides along");
+  assert.ok(y.points.every((x) => x.value === 0 && x.visits === 0) && y.sum === 0, "no jobs: no plan visits, no recurring revenue landed");
+  const six = K.arrMonthView(plans, [], "6m", TODAY);
   assert.deepEqual([six.from, six.label, six.points.length, six.change, six.pct], ["2026-06-01", "Jun – Nov 2026", 6, 281000 - 115000, 144.3]);
-  const ytd = K.arrMonthView(plans, "ytd", TODAY);
+  const ytd = K.arrMonthView(plans, [], "ytd", TODAY);
   assert.deepEqual([ytd.from, ytd.label, ytd.points.length, ytd.change], ["2026-01-01", "Jan – Nov 2026", 11, 281000 - 60000]);
-  const all = K.arrMonthView(plans, "all", TODAY);
+  const all = K.arrMonthView(plans, [], "all", TODAY);
   assert.deepEqual([all.from, all.label, all.points.length, all.points[0].added, all.change, all.pct], ["2025-08-01", "Aug 2025 – Nov 2026", 16, 1, 281000, null], "since the first plan's month: no ARR before it, no %");
   // January: YTD is one month; All without a plan before this month is this month
-  assert.deepEqual(K.arrMonthView(plans, "ytd", "2026-01-09").points.map((x) => [x.key, x.value]), [["2026-01", 60000]]);
-  assert.deepEqual(K.arrMonthView([rec(5000, "2026-11-03T16:00:00Z")], "all", TODAY).points.map((x) => [x.key, x.value, x.added]), [["2026-11", 5000, 1]]);
+  assert.deepEqual(K.arrMonthView(plans, [], "ytd", "2026-01-09").points.map((x) => [x.key, x.arr]), [["2026-01", 60000]]);
+  assert.deepEqual(K.arrMonthView([rec(5000, "2026-11-03T16:00:00Z")], [], "all", TODAY).points.map((x) => [x.key, x.arr, x.added]), [["2026-11", 5000, 1]]);
   // All reaches back 10 years at most
-  assert.equal(K.arrMonthView([rec(5000, "2009-04-03T16:00:00Z")], "all", TODAY).points.length, K.MAX_ARR_MONTHS);
+  assert.equal(K.arrMonthView([rec(5000, "2009-04-03T16:00:00Z")], [], "all", TODAY).points.length, K.MAX_ARR_MONTHS);
   // no plan at all: "-"
-  const none = K.arrMonthView([], "1y", TODAY);
+  const none = K.arrMonthView([], [], "1y", TODAY);
   assert.deepEqual([none.total, none.change, none.month_change, none.plans, none.mrr, none.points, none.label], [null, null, null, 0, null, [], "Dec 2025 – Nov 2026"]);
   // only plans that never count: $0 every month, nobody added
-  const zero = K.arrMonthView(plans.slice(-3), "6m", TODAY);
+  const zero = K.arrMonthView(plans.slice(-3), [], "6m", TODAY);
   assert.ok(zero.total === 0 && zero.points.every((x) => x.value === 0 && x.added === 0 && x.lost === 0));
   assert.equal(K.planWindow(plans[11]), null);
   assert.deepEqual(K.planWindow(plans[4]), { start: "2026-07-08", stop: "2026-08-15" });
@@ -304,20 +305,20 @@ test("ARR ahead by month (the owner's Nov 16 ask, \"the ARR for next year per mo
   for (const [i, x] of pts.entries()) if (i) assert.equal(x.value - pts[i - 1].value, x.renewing_cents + x.starting_cents - x.ending_cents, `${x.key}: renewals, starts and ends are the month's change`);
 
   // the view: today's ARR (the big number: E counted from its sale), where it ends up in 12 months and the change
-  const v = K.arrForwardView(plans, TODAY);
+  const v = K.arrForwardView(plans, [], TODAY);
   assert.deepEqual([v.range, v.ahead, v.period, v.grain, v.from, v.to, v.label, v.through], ["next12", true, "months", "month", TODAY, "2027-10-31", "Nov 2026 – Oct 2027", TODAY]);
   assert.equal(v.total, K.arrOn(plans, TODAY), "today's ARR, as every ARR view has it");
   assert.deepEqual([v.total, v.plans, v.mrr], [329000 + 30000, 12, Math.round(359000 / 12)]);
   assert.equal(pts[0].value + 30000, v.total, "this month's end less the plan that starts in April");
   assert.deepEqual([v.end, v.change, v.pct], [234500, 234500 - 359000, -34.7]);
-  assert.deepEqual(v.points, pts);
+  assert.deepEqual(v.points.map((x) => [x.key, x.arr, x.renewing, x.ending, x.starting]), pts.map((x) => [x.key, x.value, x.renewing, x.ending, x.starting]), "each month's ARR at its end rides along");
   // a year from January (DST and a leap year's Feb 29 ahead): the months still end on local days
   assert.deepEqual(K.arrForward([], "2027-01", 15, "2027-01-09").map((x) => x.to).filter((d) => /-0[23]-/.test(d)), ["2027-02-28", "2027-03-31", "2028-02-29", "2028-03-31"]);
   // no plan at all: "-"
-  const none = K.arrForwardView([], TODAY);
+  const none = K.arrForwardView([], [], TODAY);
   assert.deepEqual([none.total, none.end, none.change, none.pct, none.plans, none.mrr, none.points, none.label], [null, null, null, null, 0, null, [], "Nov 2026 – Oct 2027"]);
   // only plans that never count: $0 every month
-  const zero = K.arrForwardView(plans.slice(-6), TODAY);
+  const zero = K.arrForwardView(plans.slice(-6), [], TODAY);
   assert.ok(zero.total === 0 && zero.end === 0 && zero.pct === null && zero.points.every((x) => x.value === 0 && !x.renewing && !x.ending && !x.starting));
   // one plan, by hand
   assert.equal(K.planAhead(plans[14], TODAY), null, "pending: never");
@@ -325,6 +326,84 @@ test("ARR ahead by month (the owner's Nov 16 ask, \"the ARR for next year per mo
   assert.deepEqual(K.planAhead(plans[11], TODAY), { start: "2026-04-01", stop: "2027-03-01", renew: null, before: 4000, after: 4000 });
   assert.deepEqual(K.planAhead(plans[4], TODAY), { start: "2027-04-01", stop: null, renew: "2028-04-01", before: 30000, after: 30000 });
   assert.equal(K.ARR_MONTH_RANGES.next12, "The next 12 months");
+});
+
+test("the ARR bars are the recurring revenue that lands in each month (the owner's Nov 16 check, \"It's not that even\"): plan visits scheduled, projected by cadence, done", () => {
+  const plan = (id, ay, more = {}) => ({ id, k: "recurring", ck: "biannual", vy: 2, st: "active", ay, ar: 1, tm: 12, at: "2025-03-02T16:00:00Z", te: "2027-12-31", ...more });
+  const job = (pl, tot, more = {}) => ({ id: `jb_${pl}_${more.fv || more.tm || more.done}`, pl, st: "completed", tot, bill: true, ...more });
+  // A and B: semi-annual plans whose visits are in April and October
+  const A = plan("pl_a", 60000), B = plan("pl_b", 50000);
+  // C: quarterly, no job at all yet (made in August: its visits every 3 months from then)
+  const C = plan("pl_c", 80000, { ck: "quarterly", vy: 4, at: "2026-08-03T16:00:00Z" });
+  // D: a 3-season lights contract: November's install (done), January's takedown (not billed)
+  const D = { id: "pl_d", k: "lights_annual", ck: "lights_annual", vy: 1, st: "active", ay: 108000, ar: 1, tm: 36, at: "2025-09-03T16:00:00Z", te: "2028-10-31" };
+  // E: quarterly, cancelling from Feb 1: December's visit still counts, March's never comes, nothing projected after
+  const E = plan("pl_e", 40000, { ck: "quarterly", vy: 4, st: "cancelling", eff: "2027-02-01" });
+  // H: cancelled from Nov 10, its Nov 5 visit was done (that money came in)
+  const H = plan("pl_h", 18000, { st: "cancelled", eff: "2026-11-10" });
+  // never: a plan waiting for its signature, a hidden one-time series
+  const F = plan("pl_f", 70000, { st: "pending" });
+  const G = { ...plan("pl_g", 30000), k: "one_time_series", ar: 0 };
+  const jobs = [
+    job("pl_a", 30000, { fv: "2026-04-14" }), job("pl_a", 30000, { fv: "2026-10-06" }),
+    job("pl_a", 30000, { st: "unscheduled", tm: "2027-04" }), job("pl_a", 30000, { st: "unscheduled", tm: "2027-10" }),
+    job("pl_a", 30000, { st: "cancelled", tm: "2027-01" }),
+    job("pl_b", 25000, { fv: "2026-04-20" }), job("pl_b", 25000, { fv: "2026-10-12" }),
+    job("pl_d", 108000, { fv: "2026-11-03" }), job("pl_d", 0, { st: "scheduled", fv: "2027-01-10", bill: false }),
+    job("pl_e", 10000, { st: "unscheduled", tm: "2026-12" }), job("pl_e", 10000, { st: "unscheduled", tm: "2027-03" }),
+    job("pl_h", 9000, { fv: "2026-11-05" }),
+    job("pl_f", 70000, { st: "scheduled", fv: "2026-12-02" }), job("pl_g", 30000, { st: "scheduled", fv: "2026-12-03" }),
+    // a job of no plan is not recurring revenue
+    { id: "jb_x", pl: null, st: "scheduled", tot: 99000, bill: true, fv: "2026-12-04" },
+  ];
+  const plans = [A, B, C, D, E, H, F, G];
+  const pts = K.revenueAhead(plans, jobs, "2026-11", 12, TODAY);
+  assert.deepEqual(pts.map((x) => x.label), ["Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"]);
+  // Nov: D's install and H's visit done, C projected; Dec: E's; Apr and Oct: A's on the schedule, B's projected
+  // from its last visit (Oct 12) every 6 months; C every 3 months from August
+  assert.deepEqual(pts.map((x) => x.value), [137000, 10000, 0, 20000, 0, 55000, 20000, 0, 0, 20000, 0, 55000]);
+  assert.deepEqual(pts.map((x) => x.scheduled), [117000, 10000, 0, 0, 0, 30000, 0, 0, 0, 0, 0, 30000]);
+  assert.deepEqual(pts.map((x) => x.projected), [20000, 0, 0, 20000, 0, 25000, 20000, 0, 0, 20000, 0, 25000]);
+  assert.deepEqual(pts.map((x) => [x.visits, x.projected_visits, x.plans]).filter((_, i) => [0, 5].includes(i)), [[3, 1, 3], [2, 1, 2]]);
+  assert.ok(pts.every((x) => x.value === x.scheduled + x.projected));
+  // uneven: the semi-annual plans alone are money in April and October only
+  const semi = K.revenueAhead([A, B], jobs, "2026-11", 12, TODAY);
+  assert.deepEqual(semi.filter((x) => x.value).map((x) => [x.label, x.value]), [["Apr", 55000], ["Oct", 55000]]);
+  // the sanity rule: a regular year's months add up to the plans' year values, today's ARR
+  const regular = [A, B, C, D];
+  const sum = K.revenueAhead(regular, jobs, "2026-11", 12, TODAY).reduce((a, x) => a + x.value, 0);
+  assert.equal(sum, 60000 + 50000 + 80000 + 108000);
+  assert.equal(sum, K.arrOn(regular, TODAY));
+  // ARR at each month's end rides along (the plans renewing, ending, starting)
+  assert.deepEqual(pts.map((x) => x.arr), K.arrForward(plans, "2026-11", 12, TODAY).map((x) => x.value));
+  // a plan renewing at a higher year (ry): the visits projected after it renews are at the renewed price;
+  // a tri-annual plan (3 visits a year): every 4 months; a plan whose term doesn't renew stops with it
+  const R = plan("pl_r", 40000, { ry: 48000, te: "2027-06-30" });
+  const T = plan("pl_t", 36000, { ck: "custom", vy: 3 });
+  const N = plan("pl_n", 40000, { ar: 0, te: "2027-03-31" });
+  const more = [job("pl_r", 20000, { fv: "2026-07-08" }), job("pl_t", 12000, { fv: "2026-09-15" }), job("pl_n", 20000, { fv: "2026-09-01" })];
+  const rp = K.revenueAhead([R, T, N], more, "2026-11", 12, TODAY);
+  assert.deepEqual(rp.filter((x) => x.value).map((x) => [x.label, x.value]), [["Jan", 32000], ["Mar", 20000], ["May", 12000], ["Jul", 24000], ["Sep", 12000]], "R: Jan 20,000 + T: Jan 12,000; N: Mar; R after it renews: Jul 24,000");
+  // a row from before Nov 16 (no vy): its catalog's visits a year
+  assert.deepEqual([K.cadenceOf({ ck: "biannual" }), K.cadenceOf({ ck: "quarterly" }), K.cadenceOf({ ck: "monthly" }), K.cadenceOf({ k: "lights_annual", ck: "lights_annual" }), K.cadenceOf({ ck: "custom", vy: 3 }), K.cadenceOf({ vy: 52 })], [6, 3, 1, 12, 4, 1]);
+  // a job lands on its first visit's local day, else the day it was completed (local), else its target month
+  assert.equal(K.jobDay({ st: "completed", done: "2026-07-01T03:00:00Z" }), "2026-06-30");
+  assert.equal(K.jobDay({ st: "unscheduled", tm: "2027-04" }), "2027-04-01");
+  assert.equal(K.jobDay({ st: "unscheduled" }), null);
+
+  // the past: what landed in each month, done and still scheduled (the current month's rest)
+  const J = plan("pl_j", 60000, { ck: "quarterly", vy: 4 });
+  const past = [...jobs, job("pl_a", 5000, { done: "2026-07-01T03:00:00Z" }), job("pl_j", 15000, { st: "scheduled", fv: "2026-11-24" }), job("pl_f", 70000, { fv: "2026-10-20" })];
+  const mp = K.revenueMonths([A, B, D, H, J, F], past, "2026-06", "2026-11", TODAY);
+  assert.deepEqual(mp.map((x) => [x.label, x.value, x.done, x.scheduled, x.visits, x.plans]), [
+    ["Jun", 5000, 5000, 0, 1, 1], ["Jul", 0, 0, 0, 0, 0], ["Aug", 0, 0, 0, 0, 0], ["Sep", 0, 0, 0, 0, 0], ["Oct", 55000, 55000, 0, 2, 2], ["Nov", 132000, 117000, 15000, 3, 3],
+  ], "A's job done 10 PM Jun 30 is June's; the pending plan's October visit never counts");
+  assert.deepEqual(mp.map((x) => x.arr), K.arrMonths([A, B, D, H, J, F], "2026-06", "2026-11", TODAY).map((x) => x.value));
+  assert.deepEqual(K.revenueMonths([A], jobs, "2026-11", "2026-12", TODAY).map((x) => [x.key, x.value, x.visits]), [["2026-11", 0, 0], ["2026-12", null, null]], "a month still ahead has no point");
+  const v = K.arrMonthView([A, B, D, H, J, F], past, "6m", TODAY);
+  assert.deepEqual([v.sum, v.done, v.scheduled, v.total], [192000, 177000, 15000, K.arrOn([A, B, D, H, J, F], TODAY)]);
+  const f = K.arrForwardView(plans, jobs, TODAY);
+  assert.deepEqual([f.sum, f.scheduled, f.projected, f.total, f.mrr, f.end], [317000, 187000, 130000, K.arrOn(plans, TODAY), Math.round(K.arrOn(plans, TODAY) / 12), pts[11].arr]);
 });
 
 test("the top's Revenue view (Nov 15, Flyra's): Collected over 1W 1M 3M 1Y YTD, its average a day and its best day; nothing counted yet is '-'", () => {
@@ -540,9 +619,15 @@ test("an owner's Home: the header, the money at the top (Revenue | ARR, ARR the 
   // where it ends up and the change
   const v = m.arr_view;
   assert.deepEqual([v.range, v.ahead, v.period, v.grain, v.from, v.to, v.label, v.total, v.mrr], ["next12", true, "months", "month", TODAY, "2027-10-31", "Nov 2026 – Oct 2027", m.arr, Math.round(m.arr / 12)]);
-  assert.ok(v.plans > 0 && v.points.length === 12 && v.end === v.points[11].value && v.change === v.end - v.total, JSON.stringify([v.end, v.change]));
+  assert.ok(v.plans > 0 && v.points.length === 12 && v.end === v.points[11].arr && v.change === v.end - v.total, JSON.stringify([v.end, v.change]));
   assert.deepEqual([v.points[0].key, v.points[0].to, v.points[11].key], ["2026-11", "2026-11-30", "2027-10"]);
-  assert.ok(v.points.every((x) => Number.isInteger(x.renewing) && Number.isInteger(x.ending) && Number.isInteger(x.starting) && x.mrr === Math.round(x.value / 12)));
+  assert.ok(v.points.every((x) => Number.isInteger(x.renewing) && Number.isInteger(x.ending) && Number.isInteger(x.starting) && x.value === x.scheduled + x.projected && Number.isInteger(x.visits)));
+  // each bar the recurring revenue landing in its month: the seed's plans' jobs on the schedule, the rest projected by cadence;
+  // a year of it is close to the ARR (plans are priced by the year, jobs by the visit)
+  assert.equal(v.sum, v.points.reduce((a, x) => a + x.value, 0));
+  assert.ok(v.scheduled > 0 && v.sum === v.scheduled + v.projected, JSON.stringify([v.scheduled, v.projected]));
+  assert.ok(Math.abs(v.sum - v.total) <= v.total * 0.25, `12 months of bars ${v.sum} against ARR ${v.total}`);
+  assert.ok(new Set(v.points.map((x) => x.value)).size > 3, "uneven months: " + v.points.map((x) => x.value).join(" "));
   assert.equal(m.goal, undefined, "no goal on the card (the Goals card has it)");
   // today: the seed's four visits, with who goes, and the open tasks without a due date
   const a = d.cards.agenda;
@@ -578,15 +663,16 @@ test("who sees what: the money needs reports:read or the office sign-in; a techn
   assert.equal((await t.api("/home", { office: true })).status, 401, "the office cookie alone is not a CRM sign-in");
 });
 
-test("the budget: a cold default Home is 13 storage calls, each read once, nothing for the cards that are off", async () => {
+test("the budget: a cold default Home is 16 storage calls, each read once, nothing for the cards that are off", async () => {
   await cold();
   const { res, calls } = await counted("/home", { as: fx.owner, office: true });
   assert.equal(res.status, 200);
   const keys = calls.map((c) => c.replace(/^\S+ /, "").replace(/us_\w+\/?$/, "{user}").replace(/^ses\/\w+$/, "ses/{id}")).sort();
   // (the clock is off: no timesheets; the top: the import runs (is the latest fresh?), the plans for the ARR view; no
-  // Scheduled, so no jobs; Today: the month's visits and the people; no Leaderboard (no sold quotes) and no Inbox (Nov 16))
-  assert.deepEqual(keys, ["cfg/goals", "cfg/permissions", "ix/import-runs", "ix/plans", "ix/tasks/open", "ix/users", "ix/visits/2026-11", "ptr/home/{user}", "rec/user/{user}", "rel/user-unread/{user}", "ses/{id}", "sys/auth-epoch", "sys/mode"], calls.join("\n"));
-  assert.ok(keys.length <= 13, `${keys.length} calls`);
+  // Scheduled; the ARR bars: the plans' jobs, open and closed this year and last (Nov 16); Today: the month's visits and the
+  // people; no Leaderboard (no sold quotes) and no Inbox (Nov 16))
+  assert.deepEqual(keys, ["cfg/goals", "cfg/permissions", "ix/import-runs", "ix/jobs/2025", "ix/jobs/2026", "ix/jobs/open", "ix/plans", "ix/tasks/open", "ix/users", "ix/visits/2026-11", "ptr/home/{user}", "rec/user/{user}", "rel/user-unread/{user}", "ses/{id}", "sys/auth-epoch", "sys/mode"], calls.join("\n"));
+  assert.ok(keys.length <= 16, `${keys.length} calls`);
   assert.equal(new Set(calls).size, calls.length, "nothing read twice");
   assert.ok(!calls.some((c) => c.includes("ix-dirty/")), "no dirty markers");
   for (const gone of ["ix/sales-attention", "ix/merge-candidates", "sys/health", "ix/payments/2026-11", "ix/inbox/open", "ix/quotes/open"]) assert.ok(!calls.some((c) => c.endsWith(" " + gone)), `${gone} is not read`);
@@ -799,7 +885,7 @@ test("the Leaderboard and the Inbox left Home (Nov 16): a layout naming them dro
   for (const [range, from, n] of [["6m", "2026-06-01", 6], ["1y", "2025-12-01", 12], ["ytd", "2026-01-01", 11], ["all", "2026-11-01", 1]]) {
     const a = await t.api(`/home/money?metric=arr&range=${range}`, { as: fx.owner });
     assert.equal(a.status, 200, JSON.stringify(a.body));
-    assert.deepEqual([a.body.data.range, a.body.data.grain, a.body.data.from, a.body.data.points.length, a.body.data.total, a.body.data.points[n - 1].value], [range, "month", from, n, d.cards.money.arr, d.cards.money.arr]);
+    assert.deepEqual([a.body.data.range, a.body.data.grain, a.body.data.from, a.body.data.points.length, a.body.data.total, a.body.data.points[n - 1].arr], [range, "month", from, n, d.cards.money.arr, d.cards.money.arr]);
     assert.ok(a.body.data.mrr === Math.round(a.body.data.total / 12) && a.body.data.updated_at);
   }
   // an older phone's ARR per day (1W 1M 3M) still answers
@@ -869,43 +955,46 @@ test("Home keeps the modules' Today cards off; Edit Home is in My account; the M
   assert.ok(sys.routes.some((r) => r.path === "/dashboard/:view"), "the full dashboards stay (Money's See more)");
 });
 
-test("the client's ARR by month: the change since the period began ($ and %), this month's, the month picked", async () => {
+test("the client's ARR by month: the bars' recurring revenue (Nov 16), what's scheduled and projected, ARR's change, the month picked", async () => {
   const C = await import("../../../crm-app/modules/system/home.js");
   assert.deepEqual(C.ARR_RANGES.map((r) => r[0]), ["next12", "6m", "1y", "ytd", "all"], "the next 12 months first (Nov 16), then the past");
   assert.deepEqual(C.ARR_RANGES.map((r) => r[1]), ["Next year", "Past 6M", "Past year", "YTD", "All"]);
   assert.deepEqual(C.RANGES.map((r) => r[1]), ["1W", "1M", "3M", "1Y", "YTD"], "Revenue's stay");
-  const v = { grain: "month", total: 281000, change: 221000, pct: 368.3, month_change: -20000, mrr: 23417, points: [{ key: "2025-12", value: 60000 }, { key: "2026-10", value: 301000 }, { key: "2026-11", value: 281000 }] };
-  assert.deepEqual(C.sideStats("arr", v).map((x) => [x.label, x.value, x.sub || "", x.tone]), [["Change", "+$2,210", "+368.3%", "up"], ["This month", "−$200", "", "down"]]);
-  assert.equal(C.sideStats("arr", v)[1].title, "−$200 this month");
-  assert.deepEqual(C.sideStats("arr", { ...v, total: null, change: null, pct: null, month_change: null, points: [] }).map((x) => x.value), ["-", "-"]);
+  // the past: ARR's change since the period began, and the recurring revenue its months had
+  const m = (key, value, more = {}) => ({ key, value, done: value, scheduled: 0, visits: value ? 2 : 0, added: 0, lost: 0, arr: 281000, ...more });
+  const v = { grain: "month", total: 281000, change: 221000, pct: 368.3, month_change: -20000, mrr: 23417, sum: 172000, points: [m("2025-12", 0), m("2026-10", 55000), m("2026-11", 117000, { done: 102000, scheduled: 15000, visits: 3 })] };
+  assert.deepEqual(C.sideStats("arr", v).map((x) => [x.label, x.value, x.sub || "", x.tone]), [["Change", "+$2,210", "+368.3%", "up"], ["Recurring", "$1,720", "", undefined]]);
+  assert.equal(C.sideStats("arr", v)[0].title, "ARR +$2,210 (368.3%) since the start of Dec 2025");
+  assert.deepEqual(C.sideStats("arr", { ...v, total: null, change: null, pct: null, month_change: null, sum: null, points: [] }).map((x) => x.value), ["-", "-"]);
   assert.deepEqual(C.sideStats("arr", { total: 1000, change: 0, mrr: 83 }).map((x) => x.label), ["Change", "MRR"], "an older per-day answer");
-  assert.deepEqual(C.sideStats("arr", { loading: true }).map((x) => x.label), ["Change", "This month"]);
+  assert.deepEqual(C.sideStats("arr", { loading: true }).map((x) => x.label), ["Change", "Recurring"]);
   assert.equal(C.pctText({ change: 5, pct: null }), "");
-  assert.equal(C.monthPicked(v, "2026-10").value, 301000);
+  assert.equal(C.monthPicked(v, "2026-10").value, 55000);
   assert.equal(C.monthPicked(v, "2031-01").key, "2026-11", "a month not on screen: this one");
   assert.equal(C.monthPicked({ points: [] }, null), null);
-  // ahead (Nov 16): In 12 months and the change to it ($ and %); this month picked to start with (the first bar)
-  const pt = (key, value, more = {}) => ({ key, value, mrr: Math.round(value / 12), renewing: 0, ending: 0, starting: 0, ...more });
-  const f = { ahead: true, range: "next12", grain: "month", total: 359000, end: 234500, change: -124500, pct: -34.7, mrr: 29917, points: [pt("2026-11", 329000), pt("2027-03", 294500, { renewing: 1, ending: 1 }), pt("2027-04", 324500, { starting: 1 }), pt("2027-10", 234500, { ending: 1 })] };
-  assert.deepEqual(C.sideStats("arr", f).map((x) => [x.label, x.value, x.sub || "", x.tone]), [["In 12 months", "$2,345", "", undefined], ["Change", "−$1,245", "−34.7%", "down"]]);
-  assert.equal(C.sideStats("arr", f)[0].title, "ARR at the end of Oct 2027");
+  // ahead: what's on the schedule and what's projected over the 12 months; this month picked to start with (the first bar)
+  const pt = (key, scheduled, projected, more = {}) => ({ key, value: scheduled + projected, scheduled, projected, visits: 0, projected_visits: 0, renewing: 0, ending: 0, starting: 0, ...more });
+  const f = { ahead: true, range: "next12", grain: "month", total: 359000, end: 234500, change: -124500, pct: -34.7, mrr: 29917, sum: 352000, scheduled: 240000, projected: 112000,
+    points: [pt("2026-11", 137000, 20000, { visits: 3 }), pt("2027-03", 0, 0, { renewing: 1, ending: 1 }), pt("2027-04", 30000, 25000, { visits: 2, starting: 1 }), pt("2027-10", 0, 25000, { visits: 1, ending: 1 })] };
+  assert.deepEqual(C.sideStats("arr", f).map((x) => [x.label, x.value]), [["Scheduled", "$2,400"], ["Projected", "$1,120"]]);
   assert.deepEqual(C.sideStats("arr", { ...f, total: null, end: null, change: null, pct: null, points: [] }).map((x) => x.value), ["-", "-"]);
-  assert.deepEqual(C.sideStats("arr", { ahead: true, loading: true }).map((x) => x.label), ["In 12 months", "Change"]);
+  assert.deepEqual(C.sideStats("arr", { ahead: true, loading: true }).map((x) => x.label), ["Scheduled", "Projected"]);
   assert.equal(C.monthPicked(f, null).key, "2026-11", "ahead: this month first");
   assert.equal(C.monthPicked(f, "2027-03").key, "2027-03");
+  // a bar's lighter part: projected ahead, still to do in the past
+  assert.deepEqual([C.softOf(f.points[2], true), C.softOf(v.points[2]), C.softOf({ key: "2027-01", value: null }, true)], [25000, 15000, 0]);
   const read = (x, ahead) => String(C.monthRead(x, ahead)).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-  assert.equal(read(f.points[1], true), "Mar 2027 Projected MRR $245 ARR $2,945 Renewing 1 plan Ending 1 plan");
-  assert.equal(read(f.points[2], true), "Apr 2027 Projected MRR $270 ARR $3,245 Renewing 0 plans Ending 0 plans Starting 1 plan");
-  assert.equal(read({ key: "2026-05", value: 560000, added: 1, lost: 0 }), "May 2026 MRR $467 ARR $5,600 Added 1 plan Lost 0 plans", "the past's readout stays");
+  assert.equal(read(f.points[1], true), "Mar 2027 Revenue $0 Plan visits 0 visits Scheduled $0 Projected $0 Renewing 1 plan Ending 1 plan");
+  assert.equal(read(f.points[2], true), "Apr 2027 Part projected Revenue $550 Plan visits 2 visits Scheduled $300 Projected $250 Renewing 0 plans Ending 0 plans Starting 1 plan");
+  assert.equal(read(f.points[3], true), "Oct 2027 Projected Revenue $250 Plan visits 1 visit Scheduled $0 Projected $250 Renewing 0 plans Ending 1 plan");
+  assert.equal(read({ ...v.points[2], added: 1 }), "Nov 2026 Revenue $1,170 Plan visits 3 visits Done $1,020 Scheduled $150 Added 1 plan Lost 0 plans");
 });
 
-test("the client's MRR on each month's bar (Nov 15, \"showing the MRR in all 12 months\"): short labels that fit 12 bars on an iPhone SE", async () => {
+test("the client's amount on each month's bar (Nov 15; Nov 16: the month's recurring revenue): short labels that fit 12 bars on an iPhone SE", async () => {
   const C = await import("../../../crm-app/modules/system/home.js");
   const H = await import("../../../crm-app/modules/system/home-charts.js");
   assert.deepEqual([0, 4200, 15400, 99900, 320000, 994900, 995000, 1250000, 12000000, 123456700].map((c) => C.mrrShort(c)), ["$0", "$42", "$154", "$999", "$3.2k", "$9.9k", "$10k", "$13k", "$120k", "$1.2M"]);
   assert.deepEqual([C.mrrShort(320000, true), C.mrrShort(-15400), C.mrrShort(null)], ["3.2k", "−$154", "-"]);
-  // a month's MRR: the server's, else its ARR / 12; none for a month still ahead
-  assert.deepEqual([C.mrrOf({ value: 281000, mrr: 23417 }), C.mrrOf({ value: 281000 }), C.mrrOf({ value: null, mrr: null }), C.mrrOf(null)], [23417, 23417, null, null]);
   // the labels: "$3.2k" on every bar of an iPhone SE (a 29.6 px slot), bigger where there is room; the tight form, then every k-th bar
   const vals = [300000, 310000, 320000, 330000, 340000, 350000, 360000, 370000, 380000, 390000, 400000, 410000];
   const se = H.barLabels(vals, 29.6, C.mrrShort);

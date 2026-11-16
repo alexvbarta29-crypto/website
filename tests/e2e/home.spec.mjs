@@ -7,12 +7,15 @@
 // on a phone, chips on a desk; the period in caps, the big number, AVG and
 // PEAK; the line with its values at the left, a tap's readout, "Updated" or
 // where Collected comes from; ARR by month (Nov 15: 6M 1Y YTD All, a bar a
-// month with its MRR on top and its short name, no axis or grid, this
-// month lit, the change since the period began and this month's, a tapped
-// month's MRR, ARR and the plans added and lost; Nov 16: the next 12
-// months first, In 12 months and the change, a month's projected MRR and
-// ARR and the plans renewing and ending; Barta's red, no blue anywhere on
-// Home); a tap to Payments or Plans), no Leaderboard or Inbox card (Nov
+// month with its amount on top and its short name, no axis or grid, this
+// month lit; Nov 16: the next 12 months first; each bar the recurring
+// revenue landing in its month, the plans' visits: on the schedule and
+// projected (lighter, dashed) ahead, done and still scheduled in the past;
+// beside the big number what's scheduled and projected, or ARR's change
+// and the period's recurring revenue; a tapped month's revenue, plan
+// visits, scheduled and projected (done and scheduled), the plans renewing
+// and ending (added and lost); Barta's red, no blue anywhere on Home); a
+// tap to Payments or Plans), no Leaderboard or Inbox card (Nov
 // 16: the Menu's Leaderboard), the compact
 // Clock in (in and out), Today (Daily | Weekly | Monthly, tasks without a
 // due date), Edit Home (on, off, order, from My account too), the optional
@@ -132,7 +135,7 @@ test("before any CRM data: the header, Rotor's money at the top, Clock in and a 
       assert.equal(await f.$$eval('[data-chart="revenue"] .hf-line', (x) => x.length), 1);
       // ARR: no plans yet: "-" (the next 12 months)
       await view(f, "arr");
-      assert.match(await tc(f, ".hm-money"), /ARR, Nov 2026 – Oct 2027 ARR, - In 12 months - Change - ARR shows here once there are plans\. 0 active plans/);
+      assert.match(await tc(f, ".hm-money"), /ARR, Nov 2026 – Oct 2027 ARR, - Scheduled - Projected - ARR shows here once there are plans\. 0 active plans/);
       assert.equal(await has(f, ".hm-mread"), false, "no month to read out");
       await view(f, "revenue");
       // Clock in, compact
@@ -367,35 +370,44 @@ test("the top (Flyra's, Nov 15): Revenue first, AVG and PEAK, the line, the read
       assert.equal(await tc(f, ".hm-mper"), "ARR, Nov 2026 – Oct 2027");
       assert.equal(await tc(f, '[data-hm="m-ranges"]'), "Next year");
       const arr = (await tc(f, ".hm-mbig")).match(/^ARR, (\$[\d,]+)$/);
-      const ahead = (await tc(f, ".hm-stats")).match(/^In 12 months (\$[\d,]+) Change ([+−]?\$[\d,]+)(?: ([+−][\d.,]+%))?$/);
+      const ahead = (await tc(f, ".hm-stats")).match(/^Scheduled (\$[\d,]+) Projected (\$[\d,]+)$/);
       assert.ok(arr && ahead, await tc(f, ".hm-money"));
       const dollars = (x) => Number(x.replace(/[$,+]/g, "").replace("−", "-"));
-      // the months as the screen reader's table has them: projected MRR and ARR at each month's end, the plans renewing, ending, starting
+      const near = (a, b, d = 1) => Math.abs(a - b) <= d;
+      // the months as the screen reader's table has them: each month's recurring revenue (the plans' visits in it),
+      // on the schedule and projected, the plan visits, ARR at the month's end, the plans renewing, ending, starting
       const fwd = await f.$$eval(".hm-money table.sr tbody tr", (trs) => trs.map((tr) => [...tr.children].map((c) => c.textContent)));
       assert.deepEqual(fwd.map((r) => r[0]), ["Nov 2026", "Dec 2026", "Jan 2027", "Feb 2027", "Mar 2027", "Apr 2027", "May 2027", "Jun 2027", "Jul 2027", "Aug 2027", "Sep 2027", "Oct 2027"]);
-      for (const r of fwd) assert.ok(Math.abs(dollars(r[1]) * 12 - dollars(r[2])) <= 12, `${r[0]}: MRR is ARR / 12 (${r[1]}, ${r[2]})`);
-      assert.equal(fwd[11][2], ahead[1], "In 12 months: the last month's projected ARR");
-      assert.equal(dollars(ahead[2]), dollars(ahead[1]) - dollars(arr[1]), "the change: from today's ARR to it");
-      assert.ok(dollars(fwd[0][2]) <= dollars(arr[1]), "this month's end: today's plans (a later start counts from its month)");
-      assert.ok(fwd.some((r) => r[3] !== "0"), "the seed's plans renew in the year ahead");
-      console.log(`# ARR ahead on the e2e seed (${device}): today ${arr[1]}, in 12 months ${ahead[1]}, change ${ahead[2]} ${ahead[3] || ""}; ${fwd.map((r) => `${r[0]} ${r[2]} (MRR ${r[1]}, renewing ${r[3]}, ending ${r[4]}, starting ${r[5]})`).join("; ")}`);
-      // a bar a month with its MRR on top, the short names, this month lit (the first) and picked
+      for (const r of fwd) assert.ok(near(dollars(r[1]), dollars(r[2]) + dollars(r[3])), `${r[0]}: scheduled and projected make the month (${r.join(" ")})`);
+      const year = fwd.reduce((a, r) => a + dollars(r[1]), 0);
+      assert.ok(near(fwd.reduce((a, r) => a + dollars(r[2]), 0), dollars(ahead[1]), 12) && near(fwd.reduce((a, r) => a + dollars(r[3]), 0), dollars(ahead[2]), 12), "Scheduled and Projected: the 12 months'");
+      assert.ok(Math.abs(year - dollars(arr[1])) <= dollars(arr[1]) * 0.25, `a year of bars (${year}) is close to the ARR (${arr[1]})`);
+      assert.ok(new Set(fwd.map((r) => r[1])).size > 3, `uneven months: ${fwd.map((r) => r[1]).join(" ")}`);
+      assert.ok(dollars(ahead[1]) > 0 && dollars(ahead[2]) > 0, "the seed's plans: some visits on the schedule, the rest projected");
+      assert.ok(fwd.some((r) => r[6] !== "0"), "the seed's plans renew in the year ahead");
+      console.log(`# ARR ahead on the e2e seed (${device}): ARR ${arr[1]}, scheduled ${ahead[1]}, projected ${ahead[2]}; ${fwd.map((r) => `${r[0]} ${r[1]} (${r[2]} + ${r[3]}, ${r[4]} visits)`).join("; ")}`);
+      // a bar a month with its amount on top, the short names, this month lit (the first) and picked; the projected part lighter
       assert.equal(await f.$$eval('[data-chart="arr"] .hb-bar', (x) => x.length), 12);
+      assert.equal(await f.$$eval('[data-chart="arr"] .hb-soft', (x) => x.length), fwd.filter((r) => dollars(r[3]) > 0).length, "a lighter part where something is projected");
       assert.deepEqual(await f.$$eval('[data-chart="arr"] .hb-m', (els) => els.map((e) => e.textContent)), ["Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"]);
-      assert.match(await tc(f, ".hm-bcap"), /^Projected MRR by month ARR ÷ 12$/);
+      assert.match(await tc(f, ".hm-bcap"), /^Recurring by month Scheduled Projected$/);
+      const amountOk = (t, d) => /^\$?\d+(\.\d)?[kM]?$/.test(t) && Math.abs(Number(t.replace(/[$kM]/g, "")) * (/k$/.test(t) ? 1000 : /M$/.test(t) ? 1e6 : 1) - d) <= Math.max(1, d * 0.06);
       const flabels = await f.$$eval('[data-chart="arr"] .hb-v', (els) => els.map((e) => { const r = e.getBoundingClientRect(), c = e.closest(".hc").getBoundingClientRect(); return { t: e.textContent, l: r.left, r: r.right, inside: r.left >= c.left - 1 && r.right <= c.right + 1 && r.top >= c.top - 1, fs: parseFloat(getComputedStyle(e).fontSize) }; }));
-      assert.equal(flabels.length, 12, "every month's MRR");
+      assert.equal(flabels.length, 12, "every month's amount");
       assert.ok(flabels.every((x, i) => x.inside && x.fs >= 10 && (!i || x.l >= flabels[i - 1].r)), JSON.stringify(flabels));
+      assert.ok(flabels.every((x, i) => amountOk(x.t, dollars(fwd[i][1]))), flabels.map((x) => x.t).join(" "));
       assert.deepEqual(await f.$$eval('[data-chart="arr"] .hb-bar.now, [data-chart="arr"] .hb-m.now', (els) => els.map((e) => e.dataset.i)), ["0", "0"], "this month lit");
       assert.equal(await tc(f, '[data-chart="arr"] .hb-m.on'), "Nov");
       const pw = (n) => `${n} ${n === "1" ? "plan" : "plans"}`;
-      const readOf = (r) => `${r[0]} Projected MRR ${r[1]} ARR ${r[2]} Renewing ${pw(r[3])} Ending ${pw(r[4])}${r[5] !== "0" ? ` Starting ${pw(r[5])}` : ""}`;
+      const vw = (n) => `${n} ${n === "1" ? "visit" : "visits"}`;
+      const tagOf = (r) => (dollars(r[3]) > 0 ? (dollars(r[2]) > 0 ? " Part projected" : " Projected") : "");
+      const readOf = (r) => `${r[0]}${tagOf(r)} Revenue ${r[1]} Plan visits ${vw(r[4])} Scheduled ${r[2]} Projected ${r[3]} Renewing ${pw(r[6])} Ending ${pw(r[7])}${r[8] !== "0" ? ` Starting ${pw(r[8])}` : ""}`;
       assert.equal(await tc(f, ".hm-mread"), readOf(fwd[0]));
       // Barta's red: the bars, the month lit; no blue anywhere on Home, in either theme
       const red = await f.$eval('[data-chart="arr"] .hb-bar.now', (e) => getComputedStyle(e).fill);
       assert.equal(red, "rgb(251, 77, 61)", "the logo red");
       const [head4, num4, side4] = await Promise.all([box(f, ".hm-mhead"), box(f, ".hm-mbig"), box(f, ".hm-stats")]);
-      assert.ok(side4.x + side4.w <= head4.x + head4.w + 1 && (side4.x >= num4.x + num4.w || side4.y >= num4.y + num4.h - 4), "In 12 months and the change beside the big number, or under it");
+      assert.ok(side4.x + side4.w <= head4.x + head4.w + 1 && (side4.x >= num4.x + num4.w || side4.y >= num4.y + num4.h - 4), "Scheduled and Projected beside the big number, or under it");
       for (const theme of ["dark", "light"]) {
         await f.evaluate((t) => { document.documentElement.dataset.theme = t; }, theme);
         await page.waitForTimeout(150);
@@ -404,7 +416,7 @@ test("the top (Flyra's, Nov 15): Revenue first, AVG and PEAK, the line, the read
         await shot(page, `home-arr-ahead-${device}-${theme}`);
       }
       await f.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
-      // a tap on a month ahead: its projected MRR and ARR, the plans renewing and ending in it
+      // a tap on a month ahead: its revenue, plan visits, scheduled and projected, the plans renewing and ending in it
       const fb = await box(f, '[data-chart="arr"]');
       const fslot = await f.$eval('[data-chart="arr"] .hb-bar[data-i="4"]', (el) => { const r = el.getBoundingClientRect(), c = el.closest(".hc").getBoundingClientRect(); return Math.round(r.left - c.left + r.width / 2); });
       await f.click('[data-chart="arr"]', { position: { x: fslot, y: Math.round(fb.h / 2) } });
@@ -421,41 +433,43 @@ test("the top (Flyra's, Nov 15): Revenue first, AVG and PEAK, the line, the read
       assert.equal(await f.getAttribute('.sheet.on [data-r="next12"]', "aria-pressed"), "true");
       await page.keyboard.press("Escape");
       await f.waitForFunction(() => !document.querySelector(".sheet.on"));
-      // ARR by month, the past year (the owner's Nov 15 ask)
+      // ARR by month, the past year (the owner's Nov 15 ask; Nov 16: each bar the plan visits of its month)
       assert.equal(await period(f, "1y"), "ARR, Dec 2025 – Nov 2026");
       assert.equal(await tc(f, '[data-hm="m-ranges"]'), "Past year");
       assert.equal(await tc(f, ".hm-mbig"), arr[0], "the big number is today's ARR whatever the period");
-      const side2 = (await tc(f, ".hm-stats")).match(/^Change ([+−]\$[\d,]+)(?: ([+−][\d.,]+%))? This month ([+−]?\$[\d,]+)$/);
+      const side2 = (await tc(f, ".hm-stats")).match(/^Change ([+−]\$[\d,]+)(?: ([+−][\d.,]+%))? Recurring (\$[\d,]+)$/);
       assert.ok(side2, await tc(f, ".hm-money"));
-      // the months as the screen reader's table has them: MRR and ARR at each month's end, the plans added and lost
+      // the months as the screen reader's table has them: the recurring revenue, done and scheduled, the plan visits,
+      // ARR at each month's end, the plans added and lost
       const months = await f.$$eval(".hm-money table.sr tbody tr", (trs) => trs.map((tr) => [...tr.children].map((c) => c.textContent)));
       assert.deepEqual(months.map((r) => r[0]), ["Dec 2025", "Jan 2026", "Feb 2026", "Mar 2026", "Apr 2026", "May 2026", "Jun 2026", "Jul 2026", "Aug 2026", "Sep 2026", "Oct 2026", "Nov 2026"]);
-      const at = (i) => dollars(months[i][2]);
-      assert.equal(months[11][2], arr[1], "this month's point is today's ARR");
-      for (const r of months) assert.ok(Math.abs(dollars(r[1]) * 12 - dollars(r[2])) <= 12, `${r[0]}: MRR is ARR / 12 (${r[1]}, ${r[2]})`);
-      assert.equal(dollars(side2[3]), at(11) - at(10), "this month's change: since the end of October");
-      assert.ok(dollars(side2[1]) > 0 && dollars(side2[1]) <= at(11), side2[1]);
-      assert.ok(months.some((r) => r[4] !== "0"), "the seed's cancelled plans: a month lost one");
-      // a bar a month, each with its MRR on top ("showing the MRR in all 12 months", Nov 15: no axis, no grid),
-      // each month's short name under it, this month lit
+      assert.equal(months[11][5], arr[1], "this month's ARR is today's");
+      for (const r of months) assert.ok(near(dollars(r[1]), dollars(r[2]) + dollars(r[3])), `${r[0]}: done and scheduled make the month`);
+      assert.ok(near(months.reduce((a, r) => a + dollars(r[1]), 0), dollars(side2[3]), 12), "Recurring: the months' total");
+      assert.ok(dollars(side2[1]) > 0 && dollars(side2[1]) <= dollars(months[11][5]), side2[1]);
+      assert.ok(months.slice(0, 11).some((r) => dollars(r[2]) > 0) && months.slice(0, 11).every((r) => dollars(r[3]) === 0), "past months: the seed's plan visits done, nothing left to do");
+      assert.ok(new Set(months.map((r) => r[1])).size > 3, `uneven months: ${months.map((r) => r[1]).join(" ")}`);
+      assert.ok(months.some((r) => r[7] !== "0"), "the seed's cancelled plans: a month lost one");
+      // a bar a month, each with its amount on top (no axis, no grid), each month's short name under it, this month lit
       assert.equal(await f.$$eval('[data-chart="arr"] .hb-bar', (x) => x.length), 12);
       assert.deepEqual(await f.$$eval('[data-chart="arr"] .hb-m', (els) => els.map((e) => e.textContent)), ["Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov"]);
       assert.equal(await f.$$eval('[data-chart="arr"] .hf-grid, [data-chart="arr"] .hf-t:not(.hb-m)', (x) => x.length), 0, "no axis, no grid");
-      assert.match(await tc(f, ".hm-bcap"), /^MRR by month ARR ÷ 12$/);
+      assert.match(await tc(f, ".hm-bcap"), /^Recurring by month Done Scheduled$/);
       const vlabels = await f.$$eval('[data-chart="arr"] .hb-v', (els) => els.map((e) => { const r = e.getBoundingClientRect(), c = e.closest(".hc").getBoundingClientRect(); return { t: e.textContent, l: r.left, r: r.right, inside: r.left >= c.left - 1 && r.right <= c.right + 1 && r.top >= c.top - 1, fs: parseFloat(getComputedStyle(e).fontSize) }; }));
-      assert.equal(vlabels.length, 12, "every month's MRR");
+      assert.equal(vlabels.length, 12, "every month's amount");
       assert.ok(vlabels.every((x, i) => x.inside && x.fs >= 10 && (!i || x.l >= vlabels[i - 1].r)), `readable, in the chart, never on each other: ${JSON.stringify(vlabels)}`);
-      assert.ok(vlabels.every((x, i) => /^\$?\d+(\.\d)?[kM]?$/.test(x.t) && Math.abs(Number(x.t.replace(/[$kM]/g, "")) * (/k$/.test(x.t) ? 1000 : /M$/.test(x.t) ? 1e6 : 1) - dollars(months[i][1])) <= Math.max(1, dollars(months[i][1]) * 0.06)), vlabels.map((x) => x.t).join(" "));
+      assert.ok(vlabels.every((x, i) => amountOk(x.t, dollars(months[i][1]))), vlabels.map((x) => x.t).join(" "));
       if (device === "iphone13") assert.ok(vlabels.every((x) => x.t.startsWith("$")), "with the $ where it fits");
       assert.deepEqual(await f.$$eval('[data-chart="arr"] .hb-bar.now, [data-chart="arr"] .hb-m.now', (els) => els.map((e) => e.dataset.i)), ["11", "11"], "this month lit");
-      // the month picked to start with: this one, its readout under the bars (the month, its MRR and ARR, the plans added and lost)
+      // the month picked to start with: this one, its readout under the bars
+      const pastOf = (r) => `${r[0]} Revenue ${r[1]} Plan visits ${vw(r[4])} Done ${r[2]} Scheduled ${r[3]} Added ${pw(r[6])} Lost ${pw(r[7])}`;
       assert.equal(await tc(f, '[data-chart="arr"] .hb-m.on'), "Nov");
-      assert.equal(await tc(f, ".hm-mread"), `Nov 2026 MRR ${months[11][1]} ARR ${arr[1]} Added ${months[11][3]} ${months[11][3] === "1" ? "plan" : "plans"} Lost ${months[11][4]} ${months[11][4] === "1" ? "plan" : "plans"}`);
+      assert.equal(await tc(f, ".hm-mread"), pastOf(months[11]));
       assert.match(await tc(f, ".hm-read"), /^\d+ active plans? · MRR \$[\d,]+$/);
       assert.match(await tc(f, ".hm-upd"), /^Updated \d+:\d\d [AP]M$/);
       assert.equal(await f.getAttribute(".hm-mlink", "href"), "#/plans");
       const [head2, num2, side3] = await Promise.all([box(f, ".hm-mhead"), box(f, ".hm-mbig"), box(f, ".hm-stats")]);
-      assert.ok(side3.x >= num2.x + num2.w && side3.y < num2.y + num2.h && side3.x + side3.w <= head2.x + head2.w + 1, "the change and this month on the right of the big number");
+      assert.ok(side3.x >= num2.x + num2.w && side3.y < num2.y + num2.h && side3.x + side3.w <= head2.x + head2.w + 1, "the change and the recurring total on the right of the big number");
       for (const theme of ["dark", "light"]) {
         await f.evaluate((t) => { document.documentElement.dataset.theme = t; }, theme);
         await page.waitForTimeout(150);
@@ -463,21 +477,20 @@ test("the top (Flyra's, Nov 15): Revenue first, AVG and PEAK, the line, the read
         await shot(page, `home-arr-${device}-${theme}`);
       }
       await f.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
-      // a tap on a month: its ARR, the plans added and lost in it
+      // a tap on a month: its revenue, plan visits, the plans added and lost in it
       const ab = await box(f, '[data-chart="arr"]');
       const slot = await f.$eval('[data-chart="arr"] .hb-bar[data-i="5"]', (el) => { const r = el.getBoundingClientRect(), c = el.closest(".hc").getBoundingClientRect(); return Math.round(r.left - c.left + r.width / 2); });
       await f.click('[data-chart="arr"]', { position: { x: slot, y: Math.round(ab.h / 2) } });
       assert.equal(await tc(f, '[data-chart="arr"] .hb-m.on'), "May");
       assert.equal(await f.$$eval('[data-chart="arr"] .hb-bar.on', (x) => x.map((e) => e.dataset.i).join()), "5");
-      const plansWord = (n) => `${n} ${n === "1" ? "plan" : "plans"}`;
-      assert.equal(await tc(f, ".hm-mread"), `May 2026 MRR ${months[5][1]} ARR ${months[5][2]} Added ${plansWord(months[5][3])} Lost ${plansWord(months[5][4])}`);
+      assert.equal(await tc(f, ".hm-mread"), pastOf(months[5]));
       assert.equal(await f.$$eval('[data-chart="arr"] .hb-v.on', (x) => x.map((e) => e.dataset.i).join()), "5", "its value lit too");
       assert.deepEqual(await screenProblems(f), [], "a month picked");
       await shot(page, `home-arr-month-${device}`);
       // the arrow keys pick the month before and after
       await f.focus('[data-chart="arr"]');
       await page.keyboard.press("ArrowLeft");
-      assert.ok((await tc(f, ".hm-mread")).startsWith(`Apr 2026 MRR ${months[4][1]} ARR ${months[4][2]} Added`), await tc(f, ".hm-mread"));
+      assert.equal(await tc(f, ".hm-mread"), pastOf(months[4]));
       await page.keyboard.press("End");
       assert.match(await tc(f, ".hm-mread"), /^Nov 2026 /);
       // the other past periods: 6M YTD All
@@ -762,18 +775,18 @@ test("on a desk: the sidebar, search and New; Flyra's dashboard at 1440 (the mon
         assert.equal(await f.getAttribute('[data-hm="m-range"][data-v="next12"]', "aria-pressed"), "true");
         assert.equal(await f.$$eval('[data-chart="arr"] .hb-bar', (x) => x.length), 12);
         assert.deepEqual(await f.$$eval('[data-chart="arr"] .hb-m', (els) => els.map((e) => e.textContent)), ["Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"]);
-        assert.match(await tc(f, ".hm-stats"), /^In 12 months \$[\d,]+ Change [+−]?\$[\d,]+/);
-        await f.hover('[data-chart="arr"] .hb-bar[data-i="6"]');
-        assert.match(await tc(f, ".hm-mread"), /^May 2027 Projected MRR \$[\d,]+ ARR \$[\d,]+ Renewing \d+ plans? Ending \d+ plans?( Starting \d+ plans?)?$/, "a mouse picks as it moves");
+        assert.match(await tc(f, ".hm-stats"), /^Scheduled \$[\d,]+ Projected \$[\d,]+$/);
+        await f.hover('[data-chart="arr"] .hb-m[data-i="6"]');
+        assert.match(await tc(f, ".hm-mread"), /^May 2027( (Part )?[Pp]rojected)? Revenue \$[\d,]+ Plan visits \d+ visits? Scheduled \$[\d,]+ Projected \$[\d,]+ Renewing \d+ plans? Ending \d+ plans?( Starting \d+ plans?)?$/, "a mouse picks as it moves");
         assert.deepEqual(await blues(f), [], "no blue on Home (desk)");
         await shot(page, "home-desk-arr-ahead");
         assert.equal(await period(f, "1y"), "ARR, Dec 2025 – Nov 2026");
         assert.deepEqual(await f.$$eval('[data-chart="arr"] .hb-m', (els) => els.map((e) => e.textContent)), ["Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov"]);
         const [ac, rd] = await Promise.all([box(f, '[data-chart="arr"]'), box(f, ".hm-mread")]);
         assert.ok(ac.x >= money.x && ac.x + ac.w <= money.x + money.w && rd.y >= ac.y + ac.h, "the bars in the card, the readout under them");
-        await f.hover('[data-chart="arr"] .hb-bar[data-i="9"]');
-        assert.match(await tc(f, ".hm-mread"), /^Sep 2026 MRR \$[\d,]+ ARR \$[\d,]+ Added \d+ plans? Lost \d+ plans?$/, "a mouse picks as it moves");
-        assert.ok(await f.$$eval('[data-chart="arr"] .hb-v', (els) => els.length === 12 && els.every((e) => e.textContent.startsWith("$"))), "every month's MRR, with the $");
+        await f.hover('[data-chart="arr"] .hb-m[data-i="9"]');
+        assert.match(await tc(f, ".hm-mread"), /^Sep 2026 Revenue \$[\d,]+ Plan visits \d+ visits? Done \$[\d,]+ Scheduled \$[\d,]+ Added \d+ plans? Lost \d+ plans?$/, "a mouse picks as it moves");
+        assert.ok(await f.$$eval('[data-chart="arr"] .hb-v', (els) => els.length === 12 && els.every((e) => e.textContent.startsWith("$"))), "every month's amount, with the $");
         assert.deepEqual(await screenProblems(f), [], "ARR on a desk");
         await shot(page, "home-desk-arr");
         assert.equal(await period(f, "all"), "ARR, Oct 2025 – Nov 2026");
