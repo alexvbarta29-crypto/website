@@ -994,6 +994,26 @@ calls), `GET /home/agenda?view=&date=`, `PUT /home/layout { cards }`.
   rerender never moves anything. Under the phone's Reduce Motion none of
   it happens (`core/ui.js` "motion", `crm.css` "motion"; e2e phones run
   as Reduce Motion unless a spec asks for `motion: true`).
+- **Premium** (Nov 16, the owner: "make everything feel a little bit more
+  premium, how it looks, and just like the interactions"; `core/ui.js` and
+  `crm.css` "premium"): a whisper of layered shadow under light cards (dark
+  stays flat), true 0.5 px hairlines on a Retina screen, tabular numbers
+  wherever money lines up, iOS's switch (51 x 31, the knob stretches while
+  pressed), a frosted toast (a bad one leads with an alert mark), no text
+  selection or link callout on a long press of a control, the coral caret.
+  The bar separates from what scrolls under it with a hairline
+  (`scrollEdge`, `.app.scrolled`), and a page with its name in the page (a
+  customer, a lead) puts the name in the bar once it has scrolled under it
+  (`.app.peek`). A large title with no room beside its round buttons
+  (Customers: back, search, filter, "..." and the +) drops onto its own
+  line under them (`router.fitTitle`, `.title-own`), never "Cus...". A sheet
+  follows the finger with the backdrop lightening as it goes, rubber-bands
+  when pulled up, goes on a flick or past a quarter of its height; a tall
+  one steps the screen behind back (iOS's card stack, motion only). A light
+  tick (`haptic()`: navigator.vibrate, else iOS 18's switch tick) on a long
+  press, a switch, a segmented tap, the + and an address copied. House
+  pictures fade in once loaded (motion only). Home's big number counts up
+  once per view per page load (`countUpText`).
 - **Top-level screens** (a tab's own, or one the Menu lists: opened from
   another top-level screen they have no back button) have a 34 px bold
   title on the left and round buttons on the right: the screen's own

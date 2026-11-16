@@ -46,7 +46,7 @@
 // the first paint's cards and rows rise in. A refresh or a rerender never
 // moves anything.
 
-import { html, render, delegate, closeTopSheet, toast, sheet, icon, rnd, toggle, actionSheet, skeletonRows, armMoreExtra, hasMoreExtra, revealOn, screenGo, screenOut, screenPainted, screenStill } from "./ui.js";
+import { html, render, delegate, closeTopSheet, toast, sheet, icon, rnd, toggle, actionSheet, skeletonRows, armMoreExtra, hasMoreExtra, revealOn, screenGo, screenOut, screenPainted, screenStill, scrollEdge } from "./ui.js";
 
 const routes = [];
 let stack = [];
@@ -232,7 +232,29 @@ function header(title, showBack, act, kit = null) {
     }
   }
   document.title = (title ? title + " · " : "") + "Barta CRM";
+  fitTitle();
 }
+
+// A large title with too little room beside the back button and the round buttons (Customers on an
+// iPhone: back, search, filter, "..." and the +) drops onto its own line under them, iOS's large
+// title, instead of "Cus...". Measured after each header and on a resize.
+export function fitTitle() {
+  fitNow();
+  // (and once more when the round buttons and their badges have been drawn)
+  if (typeof requestAnimationFrame === "function") requestAnimationFrame(fitNow);
+}
+function fitNow() {
+  const app = document.getElementById("app");
+  const t = document.getElementById("top-title");
+  if (!app || !t) return;
+  const was = app.classList.contains("title-own");
+  app.classList.remove("title-own");
+  const phone = typeof matchMedia === "function" && matchMedia("(max-width: 899px)").matches;
+  if (!phone || !app.classList.contains("big-top") || app.classList.contains("own-head") || !t.textContent.trim()) return;
+  const over = t.scrollWidth > t.clientWidth + 1;
+  if (over || (was && t.clientWidth < 1)) app.classList.add("title-own");
+}
+if (typeof window !== "undefined" && typeof window.addEventListener === "function") window.addEventListener("resize", () => fitTitle());
 
 function screenCtx(path, params, extra = {}) {
   const k = keep.get(path) || {};
@@ -281,6 +303,7 @@ async function mountScreen(el, path, m, { my, focus = true, keepScroll = false, 
     v.classList.remove("flush");
     render(v, skeleton(route.skeleton));
     screenGo(v, motion);
+    if (focus) scrollEdge();
   } else screenStill(v);
   if (focus) env.onRoute(path);
   let mod, state;
@@ -310,6 +333,7 @@ async function mountScreen(el, path, m, { my, focus = true, keepScroll = false, 
     screenPainted(el);
     if (focus || current === rec) header(typeof mod.title === "function" ? mod.title(ctx.state, ctx) : title, canGoBack(), mod.action ? mod.action(ctx.state, ctx) : null, headerKit(mod, ctx.state, ctx));
     if (mod.mount) mod.mount(el, ctx.state, ctx);
+    if (focus || current === rec) scrollEdge();
   };
   paint();
   if (mod.events) {
@@ -319,6 +343,7 @@ async function mountScreen(el, path, m, { my, focus = true, keepScroll = false, 
   }
   const k = keep.get(path);
   el.scrollTop = (keepScroll || wentBack) && k ? k.scrollTop || 0 : 0;
+  if (focus) scrollEdge();
   if (focus) {
     wentBack = false;
     if (!keepScroll) { try { el.focus({ preventScroll: true }); } catch (e) { /* old Safari */ } }
