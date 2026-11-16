@@ -271,11 +271,9 @@ export function headerNumbers(s, can, extra = {}) {
   return out;
 }
 
-// A street-level photo of the property (Flyra's Apple Maps look) needs a
-// paid key (Google Street View or Apple MapKit). Not built: an owner who
-// adds one would fill this in (docs/CRM-CONTACTS.md). Until then the page
-// shows the keyless aerial view instead.
-export const STREET_PHOTO = null;
+// The street-level photo of the house (Google Street View, else the
+// satellite): house.js, docs/CRM-MAP.md "The house picture". Without Google
+// the page shows the keyless aerial view, as before.
 
 const sinceText = (s) => {
   const c = s.contact;
@@ -376,8 +374,11 @@ function reach(s, ctx) {
     ...emails.map((e) => ({ icon: "mail", label: "Email", value: e.address, href: mailHref(e.address), actions: [{ icon: "copy", label: "Copy the email", data: { copy: e.address } }, { icon: "send", label: `Email ${name}`, href: mailHref(e.address) }] })),
     lines.length && (lead(s) || s.tech || !prop) && { icon: "pin", label: lead(s) ? "Address" : "Billing address", value: lines[0], sub: lines[1] || null, address: addressLine(addr), actions: [{ icon: "nav", label: "Directions", ext: directionsUrl(geo || addressLine(addr)) }] },
   ].filter(Boolean);
-  // a lead (and a tech): the house picture inside this card (a customer's is in PRIMARY PROPERTY's)
-  const pic = (lead(s) || s.tech) && prop && houseOn() ? housePic({ id: prop.id, geo, line: addressLine(prop.address) }) : "";
+  // a lead (and a tech, and a customer with no property yet): the house picture inside this card (a
+  // customer's is in PRIMARY PROPERTY's); with no property, the billing address's (under the contact)
+  const pic = !houseOn() || !(lead(s) || s.tech || !prop) ? ""
+    : prop ? housePic({ id: prop.id, geo, line: addressLine(prop.address) })
+      : !s.tech && addr && addr.street1 ? housePic({ id: c.id, of: "contacts", line: addressLine(addr) }) : "";
   if (pic) return html`<div class="ct-reach" id="ct-reach"><div class="rs-card ct-reach-c">${rows.length ? contactRows(rows, { card: false }) : ""}<div class="ct-house">${pic}</div></div></div>`;
   return html`<div class="ct-reach" id="ct-reach">${rows.length ? contactRows(rows) : html`<div class="rs-card"><p class="rs-empty">No phone, email or address on file</p></div>`}</div>`;
 }
@@ -405,10 +406,10 @@ function contactCard(s, ctx) {
     line && html`<div class="ct-cr">${prop ? html`<a class="ct-cr-a" ${addressHold(addressLine(addr))} ${attrs({ href: "#/properties/" + encodeURIComponent(prop.id) })}>${txt("pin", "Primary property", line, gate || null)}</a>` : html`<div class="ct-cr-a" ${addressHold(addressLine(addr))}>${txt("pin", "Billing address", line)}</div>`}</div>`,
   ].filter(Boolean);
   // the house (Rotor's): Street View, else the aerial (house.js); without Google, the keyless satellite
-  const house = prop && houseOn();
+  const house = houseOn() && (prop || (addr && addr.street1));
   const photo = !house && geo && ctx.can("canvass:use") && hasRoute("/map");
   return html`<div class="rs-card ct-ccard" id="ct-reach">${rows.length ? rows : html`<p class="rs-empty">No phone, email or address on file</p>`}
-    ${house ? html`<div class="ct-map ct-house">${housePic({ id: prop.id, geo, line: addressLine(prop.address) })}</div>` : ""}
+    ${house ? html`<div class="ct-map ct-house">${prop ? housePic({ id: prop.id, geo, line: addressLine(prop.address) }) : housePic({ id: c.id, of: "contacts", line: addressLine(addr) })}</div>` : ""}
     ${photo ? html`<a class="ct-map" ${openExternal(directionsUrl(geo || addressLine(addr)))} ${attrs({ "aria-label": `Directions to ${line || "the property"}` })}><span class="rs-sat ct-photo" ${attrs({ "data-photo": `${geo.lat},${geo.lng}`, role: "img", "aria-label": `Satellite view of ${line || "the property"}` })}></span></a>` : ""}</div>`;
 }
 

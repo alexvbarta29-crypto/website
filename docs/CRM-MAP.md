@@ -208,6 +208,94 @@ Properties need a map point to show on the map.
   map point) is built by the nightly check, or at once with Settings → Data
   → Rebuild the lists.
 
+## The house picture
+
+The owner (Nov 2026): "make sure every lead and customer has a Google
+Street View or a Google Earth view or something of the house."
+
+- **Where it shows.** The customer's and the lead's page, inside the
+  CONTACT card where the satellite was (a phone; on a desk a customer's is
+  inside the PRIMARY PROPERTY card, a lead's inside CONTACT), with Rotor's
+  small **Street | Aerial** switch; the property page; a job's and a
+  visit's address card as a small square; a small square on each row of
+  the Customers and Leads lists (lazy: only rows on screen ask). A tap
+  opens Google Maps in a new tab: Street View at the house
+  (`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=LAT,LNG`)
+  or the satellite map (`map_action=map&basemap=satellite&zoom=20`); with
+  no map point, a Google Maps search for the address.
+- **What it is.** Street View first: the Street View metadata endpoint
+  (free) finds the nearest outdoor panorama (50 m, then 120 m), and the
+  picture is taken from there with the heading pointed at the house (the
+  bearing from the panorama to the property's map point; a closer house
+  gets a wider, higher view). No coverage: never Google's grey "no
+  imagery" tile (the metadata says so first, and the image call uses
+  `return_error_code`); the screen switches to the aerial: Maps Static,
+  `maptype=satellite`, zoom 20 (a thumb 19), scale 2, a red pin. Neither:
+  a plain square with a pin, "No picture of the house yet".
+- **Every lead and customer.** A property with no map point is geocoded
+  once through the existing `geocodeProperty` (Google's Geocoding API,
+  stored as the property's derived `geo`, the same as `contacts.geocode`;
+  the parallel-run guard allows it on imported properties). A contact with
+  no property yet (a lead typed in by hand) gets its billing address's
+  picture, kept under the contact's id, with Google aiming at the address.
+  The `contacts.house` sweep (bulk lane, every pass) walks every property
+  (`rec/property/`, resumable after its last key), then every contact with
+  no property, warming the default picture (street, else aerial; full and
+  thumb), at most 5 needing Google and 40 looked at a pass, once a day;
+  the first view of anything it hasn't reached makes it then.
+- **Paid once per address.** Pictures are kept in the `crm-files` store at
+  `h/{propertyId or contactId}/{hash}-{street|aerial}-{full|thumb}` (never
+  backed up: they come back from Google); the hash is of the one-line
+  address and the map point, so only a new address (or a moved point) asks
+  Google again, and the old pictures are deleted then. `geo/house/p/{id}`
+  remembers the panorama, its aim, and "no Street View here". A deleted
+  property's (or a merged-away contact's) pictures go with the sweep.
+  Browsers keep a picture an hour (`private`, with an ETag; a 304 after).
+- **Budget.** Every billed Google call (an image or a geocode) is counted
+  before it is made, in `geo/house/use/{yyyy-mm}` (one CAS'd counter), and
+  refused past 9,000 a month, 600 a day, the sweep 450 of those, one
+  person 150 a day (a 429; the screen shows the satellite or the plain
+  square). A storage error spends nothing and calls nothing.
+- **Off** (no `GOOGLE_MAPS_API_KEY`, Maps not `live` in Settings →
+  Integrations, any deploy but production: local, tests, previews):
+  `GET /house/status` says `{ on: false }`, no picture is asked for, and
+  the pages show the keyless satellite (the map's aerial, as before) or
+  nothing. Nothing breaks.
+- **Privacy.** Google gets the property's map point (or its one-line
+  address when it has none) and the server's key; never a name, phone or
+  email. Logs carry Google's status word or HTTP status only, never an
+  address or the key. The page's CSP is unchanged: the pictures come from
+  the CRM's own route (`img-src 'self'`).
+- Files: `netlify/lib/crm/modules/contacts/house.mjs` (routes, cache,
+  budget, sweep), `netlify/lib/crm/adapters/maps-google.mjs` (`streetMeta`,
+  `streetImage`, `aerialImage`), `crm-app/modules/contacts/house.js` (the
+  picture, the switch, the fallbacks). Tests:
+  `tests/crm/contacts/house.test.mjs`, `tests/crm/core/address-hold.test.mjs`.
+
+## The address hold
+
+The owner (Nov 2026): "make addresses copyable whenever you hold down on
+them." Every address the CRM shows carries `data-address="<one line>"`
+(`core/ui.js`: `addressAttrs()`, `addressHold()`, and an `address` option
+on `contactRows`, `addressCard`, `listRow`, `boardCard`, `personCard` and a
+`dataTable` column). A long press on it (450 ms; a right click or the mouse
+held on a desk) copies the one line (the Clipboard API, else a hidden
+textarea and `execCommand("copy")` for older iPhones, tried again as the
+finger lifts if the browser refused during the hold), buzzes lightly where
+the phone can (`navigator.vibrate`; an iPhone doesn't) and says **Address
+copied**. A tap still does what it did (open the property, directions); the
+click that ends a hold is swallowed. On a row whose long press opens its
+"..." (`data-hold`), the address is on its second line, so a hold there
+copies and a hold elsewhere still opens the "...". Never the gate code.
+Where: the customer and lead pages (CONTACT, PRIMARY PROPERTY, Properties),
+the property page, a job's and a visit's address card, an invoice's Bill
+To, the schedule (Day rows, the board's cards, Find a visit, a route's
+stops, the visit panel), the tech's Today and visit, the Inbox's person
+panel, the map's pin and place sheets and its search, the Customers,
+Leads and Jobs lists, a quote's and a plan's property, the create forms'
+property row, and search results (the header's, the +, the pickers).
+Tests: `tests/crm/core/address-hold.test.mjs`, `tests/e2e/address.spec.mjs`.
+
 ## Outside hosts and what they get (privacy)
 
 | Host | From | What it gets | When |
@@ -216,6 +304,7 @@ Properties need a map point to show on the map.
 | `basemap.nationalmap.gov` | the browser | aerial tiles for the part of the map on screen, the same as above | while satellite is on |
 | `geocoding.geo.census.gov` | the server (`map.geocode`) | street, city, state and ZIP of properties without a map point, with a row number; nothing else | background passes, production, Settings → Maps on |
 | `nominatim.openstreetmap.org` | the server (`GET /map/reverse`) | the two coordinates of a dropped pin and the CRM's User-Agent | a pin dropped, production, Settings → Maps on |
+| `maps.googleapis.com` | the server (the house picture, `contacts.geocode`) | a property's map point (or its one-line address when it has none) and the server key: Street View metadata and images, Maps Static satellite images, Geocoding | Google Maps `live`, production; once per address (then Blobs), inside the budget |
 | (owner-added) `ibasemaps-api.arcgis.com`, `api.maptiler.com` | the browser | tiles, as above, with the owner's browser key | only once set in Netlify |
 
 No customer's name, phone or email ever goes to a map host. Positions of
@@ -242,6 +331,9 @@ All `auth: "session"`.
 | `GET /map/team?date` | team_map:read | people, positions, trails, visits (40 storage calls) |
 | `POST /map/team/forget` | settings:owner | delete stored positions (18 a call; the button repeats) |
 | `GET/POST /map/geocode` | settings:owner | the geocoder's status · wake the bulk lane |
+| `GET /properties/:id/house.jpg?kind=street\|aerial&size=full\|thumb` | contacts:read (a tech: their visits' properties) | the house picture (contacts module); 404 when there is none (or Google is off), 429 past the budget |
+| `GET /contacts/:id/house.jpg?...` | contacts:read (scoped) | the contact's primary (else first) property's picture; no property: the billing address's |
+| `GET /house/status` | contacts:read | `{ on }`: whether pictures can come at all |
 
 Permissions: `canvass:use` (owner, office; technicians per person),
 `canvass:manage` (owner, office), `team_map:read` (owner, office).
@@ -264,6 +356,9 @@ Permissions: `canvass:use` (owner, office; technicians per person),
   `key` and `outcome` too.
 - Sweeps: `map.geocode` (bulk, every pass, mutates derived property fields
   only, so the parallel-run guard lets it fill imported properties),
+  `contacts.house` (the contacts module's, bulk, every pass: house
+  pictures, a few a pass, once a day; it changes no record but a
+  property's derived `geo`),
   `map.retention` (bulk, daily 03:20, maintenance).
 - Export: `pin`, `territory` (Settings → Data CSV). Positions are not
   exportable (they are not kept long).
@@ -286,6 +381,29 @@ Permissions: `canvass:use` (owner, office; technicians per person),
    → Cadences → New lead → add **Door to Door** to its sources.
 6. Turn on door to door for a technician who knocks (Settings → Door to
    door → Who can knock doors).
+7. The house picture needs three Google APIs on the project that owns
+   `GOOGLE_MAPS_API_KEY`: **Street View Static API**, **Maps Static API**
+   and **Geocoding API**. To check: console.cloud.google.com → pick the
+   project → APIs & Services → Enabled APIs & services: all three listed
+   (else Library → search each → Enable); then APIs & Services →
+   Credentials → the key: under API restrictions either "Don't restrict
+   key" or all three ticked, and Application restrictions **None** (a
+   server key; "Websites" would refuse the server). A shortcut: if Light
+   Studio's house photo and its satellite measuring view both work, all
+   three already are. Then Settings → Integrations → Google Maps: **Live**
+   (production; this also makes Google, not the Census Bureau, find new
+   properties' map points). Pictures start at once on the pages opened and
+   the sweep fills the rest over a few days.
+8. Cost (Google's list prices as last published, 2025: Street View Static
+   $7, Maps Static $2 and Geocoding $5 per 1,000, each with 10,000 free
+   calls a month; the metadata call is free; check
+   mapsplatform.google.com/pricing for 2026): about 1,300 properties once
+   is about 2,600 Street View pictures (full and thumb), a few hundred
+   satellite ones and up to 1,300 geocodes, inside the free calls; without
+   them about $30 once. New customers after that: cents a month. The
+   budget never lets it pass 9,000 billed calls a month. A Google Cloud
+   budget alert (Billing → Budgets & alerts, say $10) is a good belt and
+   braces.
 
 ## Data rules
 

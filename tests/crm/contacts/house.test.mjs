@@ -194,6 +194,12 @@ test("who may see the property may see its picture: a tech with a visit there, n
   assert.equal(byContact.headers.get("content-type"), "image/jpeg");
   assert.equal((await pic(`/contacts/${c.id}/house.jpg?size=thumb`, tech)).status, 200);
   assert.equal((await pic(`/contacts/${c.id}/house.jpg?size=thumb`, other)).status, 404);
+  // a lead with no property yet: their billing address's picture (Google aims at the address)
+  const hand = (await store.createRecord("contact", { first_name: "Hand", last_name: "Typed", phones: [{ e164: "+17635550172", sms: true }], lifecycle: "lead", source: { source: "Referral" }, billing_address: { street1: "270 Example Ave", city: "Delano", state: "MN", zip: "55328" } }, W(owner.id))).data;
+  const handPic = await pic(`/contacts/${hand.id}/house.jpg`, owner);
+  assert.equal(handPic.status, 200);
+  assert.equal(t.stores.files.keys(`h/${hand.id}/`).length, 1);
+  assert.equal((await pic(`/contacts/${hand.id}/house.jpg`, tech)).status, 404, "a tech without a visit there");
   assert.equal((await pic(`/properties/${p.id}/house.jpg`, null)).status, 401);
   assert.equal((await pic(`/properties/pr_00000000000000000000/house.jpg`, owner)).status, 404);
 });
@@ -239,6 +245,8 @@ test("the contacts.house sweep: a few properties a pass, resumes where it stoppe
   for (let i = 0; i < 7; i++) made.push((await house(owner, { street1: `${200 + i} Example Ave`, geo: { lat: 45.2 + i / 1000, lng: -93.7, source: "census" } })).p);
   const farm = (await house(owner, { street1: "3 Farm Rd", geo: { lat: 46.2, lng: -93.7, source: "census" } })).p;
   const imported = await house(owner, { street1: "250 Example Ave", imported: true });
+  // a lead typed in by hand: a billing address, no property yet
+  const handLead = (await store.createRecord("contact", { first_name: "Hand", last_name: "Lead", phones: [{ e164: "+17635550171", sms: true }], lifecycle: "lead", source: { source: "Referral" }, billing_address: { street1: "260 Example Ave", city: "Delano", state: "MN", zip: "55328" } }, W(owner.id))).data;
   const prod = deployContext(new Request("https://www.bartawindowwashing.com/"), { deploy: { context: "production" } }, { CRM_PRODUCTION: "1" });
   const ctx = () => ({ ...automationCtx({ mode: { system_of_record: "rotor", paused: false }, key: "contacts.house", requestId: "house-test" }), deploy: prod, budget: store.withBudget(120000, 100000, { strict: false }) });
   const pass = () => store.withStoreScope({ deploy: prod, requestId: "house-test" }, () => H.runHouseSweep(ctx()));
@@ -248,8 +256,13 @@ test("the contacts.house sweep: a few properties a pass, resumes where it stoppe
   const st = t.stores.data.json(H.SWEEP_KEY);
   assert.ok(st.after && !st.day_done, "it remembers where it stopped");
   const second = await pass();
-  assert.match(second.result, /^walked:/, JSON.stringify(second));
+  assert.match(second.result, /^properties:/, JSON.stringify(second));
+  assert.equal(t.stores.data.json(H.SWEEP_KEY).phase, "contacts", "then the contacts with no property");
+  let more;
+  do { more = await pass(); } while (!/^walked:/.test(more.result));
   assert.equal(t.stores.data.json(H.SWEEP_KEY).day_done, "2026-11-17");
+  assert.equal(t.stores.files.keys(`h/${handLead.id}/`).length, 2, "the hand-typed lead's address got its picture (under the contact)");
+  assert.equal(t.stores.files.keys(`h/${imported.c.id}/`).length, 0, "a contact with a property is pictured through the property");
   for (const p of [...made, imported.p]) assert.ok(t.stores.files.keys(`h/${p.id}/`).length === 2, `street full and thumb for each (${p.id})`);
   assert.equal(t.stores.files.keys(`h/${farm.id}/`).length, 2, "the farm: the aerial instead");
   assert.ok(t.stores.files.keys(`h/${farm.id}/`).every((k) => k.includes("-aerial-")));

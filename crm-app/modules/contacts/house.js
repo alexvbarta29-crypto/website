@@ -50,13 +50,14 @@ export const streetViewUrl = (geo, line) => (okGeo(geo) ? `https://www.google.co
 export const aerialUrl = (geo, line) => (okGeo(geo) ? `https://www.google.com/maps/@?api=1&map_action=map&center=${geo.lat.toFixed(6)},${geo.lng.toFixed(6)}&zoom=20&basemap=satellite` : search(line));
 
 const LABEL = { street: "Street View", aerial: "Satellite view" };
-// The picture (Street View first). id: the property's id; geo: its map point; line: its one-line address.
-export function housePic({ id, geo = null, line = "", toggle = true, cls = "" } = {}) {
+// The picture (Street View first). id: the property's id (of: "contacts": a contact's, for one with
+// no property yet: their billing address); geo: its map point; line: its one-line address.
+export function housePic({ id, geo = null, line = "", toggle = true, cls = "", of = "properties" } = {}) {
   if (!id) return "";
   const where = line || "the house";
   const urls = { "data-url-street": streetViewUrl(geo, line), "data-url-aerial": aerialUrl(geo, line) };
   return html`<div ${attrs({ class: "rs-house" + (cls ? " " + cls : ""), "data-house-box": "", "data-kind": "street", ...urls })}>
-    <a class="rs-house-a" ${openExternal(streetViewUrl(geo, line))} ${attrs({ "data-house-link": "", "aria-label": `${LABEL.street} of ${where} (opens Google Maps)` })}><img ${attrs({ src: houseSrc(id, "street"), alt: "", loading: "lazy", decoding: "async", "data-house": "street", "data-base": baseOf(id) })}></a>
+    <a class="rs-house-a" ${openExternal(streetViewUrl(geo, line))} ${attrs({ "data-house-link": "", "aria-label": `${LABEL.street} of ${where} (opens Google Maps)` })}><img ${attrs({ src: houseSrc(id, "street", "full", of), alt: "", loading: "lazy", decoding: "async", "data-house": "street", "data-base": baseOf(id, of) })}></a>
     <span class="rs-house-none" aria-hidden="true">${icon("pin")}<span>No picture of the house yet</span></span>
     ${toggle ? html`<span class="rs-house-seg" role="group" aria-label="House picture"><button type="button" ${attrs({ "data-house-kind": "street", "aria-pressed": "true" })}>Street</button><button type="button" ${attrs({ "data-house-kind": "aerial", "aria-pressed": "false" })}>Aerial</button></span>` : ""}
   </div>`;

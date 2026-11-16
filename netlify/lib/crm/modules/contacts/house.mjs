@@ -11,8 +11,11 @@
 //       satellite, zoom 20 (a thumb 19), a red pin. 404 when Google Maps
 //       isn't live (local, tests, dry-run): the screens then show the
 //       keyless satellite or a plain square, never a broken picture.
-//   GET /contacts/:id/house.jpg?...   the same, of the contact's primary property
-//       (a list row knows the contact; whoever may read that property)
+//   GET /contacts/:id/house.jpg?...   the same, of the contact's primary
+//       property (else their first): a list row knows the contact; whoever
+//       may read that property. A contact with no property yet but a billing
+//       address (a lead typed in by hand): that address's picture, kept
+//       under the contact's id, for whoever may read the contact.
 //   GET /house/status → { on }: whether pictures can come at all (the
 //       screens ask once, so a list never asks for 50 pictures that can't come)
 //   runHouseSweep(ctx)  the contacts.house sweep (bulk lane, every pass):
@@ -21,7 +24,9 @@
 //       geocodeProperty (a derived field, which the parallel-run guard
 //       allows on imported records, as the contacts.geocode sweep does) and
 //       warms the default picture (street, else aerial; full and thumb), a
-//       few properties a pass. Deleted properties lose their pictures.
+//       few properties a pass; then every contact with a billing address and
+//       no property (rec/contact/, the same way). Deleted properties lose
+//       their pictures. Nothing it does changes a record but the derived geo.
 //
 // Pictures are kept in crm-files at h/{propertyId}/{hash}-{kind}-{size}
 // (never backed up: they come back from Google), where hash is the
@@ -39,14 +44,14 @@
 // never an address or a key.
 
 import { createHash } from "node:crypto";
-import { getRaw, putRaw, deleteRaw, settledWrite, listKeys, getRecord } from "../../../crm-store.mjs";
+import { getRaw, putRaw, deleteRaw, settledWrite, listKeys, getRecord, listRel } from "../../../crm-store.mjs";
 import { adapter } from "../../adapters/index.mjs";
 import { now, nowIso, localDate } from "../../core/clock.mjs";
 import { NotFoundError, RateLimited } from "../../core/errors.mjs";
 import { isId } from "../../core/ids.mjs";
 import { addressOneLine } from "./display.mjs";
 import { geocodeProperty } from "./properties.mjs";
-import { readableProperty } from "./routes.mjs";
+import { readableProperty, readable } from "./routes.mjs";
 import { safeErr } from "../../../referral-lib.mjs";
 
 export const HOUSE_KINDS = Object.freeze(["street", "aerial"]);
@@ -221,6 +226,10 @@ async function houseRoute(ctx, propertyId = ctx.params.id) {
     return new Response(null, { status: 304, headers: { ETag: etag, "Cache-Control": "private, max-age=3600" } });
   }
   const out = await housePicture(got.data, { kind, size, maps, who: { uid: ctx.user ? ctx.user.id : null }, geo: { write: ctx.write(), deploy: ctx.deploy } });
+  return pictureResponse(out, kind, size);
+}
+
+function pictureResponse(out, kind, size) {
   if (out.none === "budget") throw new RateLimited("Too many house pictures today. The rest come tomorrow.", 3600);
   if (out.none || !isJpegOrPng(out.bytes)) throw new NotFoundError(out.none === "no_imagery" ? "No Street View here." : "No picture of this house yet.");
   return new Response(out.bytes, {
@@ -237,12 +246,29 @@ async function houseRoute(ctx, propertyId = ctx.params.id) {
   });
 }
 
-// A contact's picture is its primary property's (a list row knows the contact, not the property).
+// The place a contact's picture is of: their primary property (else their first), else (no
+// property yet) their billing address, kept under the contact's own id. → { pid } | { place } | null
+export async function contactPlace(c) {
+  if (!c || c.deleted_at) return null;
+  if (isId(c.primary_property_id, "property")) return { pid: c.primary_property_id };
+  const first = (await listRel("contact-properties", c.id, { limit: 1 }))[0];
+  if (first && isId(first.id, "property")) return { pid: first.id };
+  const a = c.billing_address;
+  return a && str(a.street1) ? { place: { id: c.id, address: a } } : null;
+}
+
+// A contact's picture (a list row knows the contact, not the property).
 async function contactHouseRoute(ctx) {
-  const c = isId(ctx.params.id, "contact") ? await getRecord("contact", ctx.params.id) : null;
-  const pid = c && c.data && !c.data.deleted_at ? c.data.primary_property_id : null;
-  if (!pid) throw new NotFoundError("No picture of this house yet.");
-  return houseRoute(ctx, pid);
+  const got = await readable(ctx, ctx.params.id);
+  const where = await contactPlace(got.data);
+  if (!where) throw new NotFoundError("No picture of this house yet.");
+  if (where.pid) return houseRoute(ctx, where.pid);
+  const kind = ctx.query.get("kind") === "aerial" ? "aerial" : "street";
+  const size = ctx.query.get("size") === "thumb" ? "thumb" : "full";
+  const maps = await adapter("maps", { deploy: ctx.deploy });
+  if (!liveMaps(maps)) throw new NotFoundError("No picture of this house yet.");
+  // (no map point to find here: Google aims at the address itself)
+  return pictureResponse(await housePicture(where.place, { kind, size, maps, who: { uid: ctx.user ? ctx.user.id : null } }), kind, size);
 }
 
 async function statusRoute(ctx) {
@@ -266,7 +292,10 @@ export async function runHouseSweep(ctx) {
   const st = await getRaw(SWEEP_KEY);
   const state = st && st.data ? st.data : {};
   if (state.day_done === today) return { done: true, result: "done_today" };
+  // two walks, one after the other: every property, then contacts with no property (their billing address)
   const after = typeof state.after === "string" ? state.after : "";
+  const phase = state.phase === "contacts" ? "contacts" : "properties";
+  if (phase === "contacts") return contactsWalk(ctx, maps, st, state, today, after);
   const keys = (await listKeys("rec/property/")).filter((k) => k > after);
   let last = after, looked = 0, warmed = 0, stop = null;
   for (const k of keys) {
@@ -301,8 +330,50 @@ export async function runHouseSweep(ctx) {
     if (budget) { stop = "budget"; break; }
     last = k;
   }
-  const finished = !stop;
-  const next = finished ? { after: null, day_done: today, warmed_last: warmed } : { after: last, day_done: state.day_done || null, warmed_last: warmed };
-  await settledWrite(SWEEP_KEY, { ...next, at: nowIso() }, st ? { onlyIfMatch: st.etag } : { onlyIfNew: true }).catch((e) => console.error(`crm:house: sweep place not saved (${safeErr(e)})`));
-  return { done: true, progress: looked, result: finished ? `walked:${warmed}` : `${stop}:${warmed}` };
+  // (the properties walked: the contacts' walk next, from its start)
+  const next = !stop ? { phase: "contacts", after: null, day_done: state.day_done || null, warmed_last: warmed } : { phase, after: last, day_done: state.day_done || null, warmed_last: warmed };
+  await saveSweep(st, next);
+  return { done: true, progress: looked, result: !stop ? `properties:${warmed}` : `${stop}:${warmed}` };
+}
+
+const saveSweep = (st, next) => settledWrite(SWEEP_KEY, { ...next, at: nowIso() }, st ? { onlyIfMatch: st.etag } : { onlyIfNew: true }).catch((e) => console.error(`crm:house: sweep place not saved (${safeErr(e)})`));
+
+// The second walk: a contact with a billing address and no property yet (a lead typed in by hand)
+// gets that address's picture, kept under the contact's id (no map point is looked up for it).
+async function contactsWalk(ctx, maps, st, state, today, after) {
+  const keys = (await listKeys("rec/contact/")).filter((k) => k > after);
+  let last = after, looked = 0, warmed = 0, stop = null;
+  for (const k of keys) {
+    if (looked >= SWEEP_SCAN || warmed >= SWEEP_WARM) { stop = "batch"; break; }
+    if (ctx.budget && ctx.budget.left() < 15000) { stop = "time"; break; }
+    looked += 1;
+    const id = k.slice("rec/contact/".length);
+    const got = await getRecord("contact", id).catch(() => null);
+    const c = got && got.data;
+    if (c && (c.deleted_at || c.merged_into)) {
+      // (gone or merged away: its own pictures go too)
+      if (await readMeta(id).catch(() => null)) { await dropPictures(id).catch(() => {}); await deleteRaw(metaKey(id)).catch(() => {}); }
+      last = k;
+      continue;
+    }
+    const where = c && c.lifecycle !== "archived" ? await contactPlace(c).catch(() => null) : null;
+    if (!where || !where.place) { last = k; continue; }
+    const p = where.place;
+    const meta = await readMeta(id);
+    const have = meta && meta.data.h === houseHash(p) ? meta.data : null;
+    const kind = have && have.street === "none" ? "aerial" : "street";
+    if (have && (have.have || []).includes(`${kind}-full`) && (have.have || []).includes(`${kind}-thumb`)) { last = k; continue; }
+    warmed += 1;
+    let budget = false;
+    for (const size of ["full", "thumb"]) {
+      let out = await housePicture(p, { kind, size, maps, who: { sweep: true } });
+      if (out.none === "no_imagery") out = await housePicture(p, { kind: "aerial", size, maps, who: { sweep: true } });
+      if (out.none === "budget") { budget = true; break; }
+    }
+    if (budget) { stop = "budget"; break; }
+    last = k;
+  }
+  const next = !stop ? { phase: "properties", after: null, day_done: today, warmed_last: warmed } : { phase: "contacts", after: last, day_done: state.day_done || null, warmed_last: warmed };
+  await saveSweep(st, next);
+  return { done: true, progress: looked, result: !stop ? `walked:${warmed}` : `contacts-${stop}:${warmed}` };
 }
