@@ -1,5 +1,19 @@
 [
   {
+    "id": "18207007156331217",
+    "image": "assets/img/instagram/18207007156331217.jpg",
+    "type": "IMAGE",
+    "slides": [
+      {
+        "type": "IMAGE",
+        "image": "assets/img/instagram/18207007156331217.jpg"
+      }
+    ],
+    "caption": "",
+    "permalink": "https://www.instagram.com/p/DgODMdMSyT_/",
+    "timestamp": "2026-11-26T21:16:42+0000"
+  },
+  {
     "id": "17901143652399042",
     "image": "assets/img/instagram/17901143652399042.jpg",
     "type": "VIDEO",
@@ -141,19 +155,5 @@
     "caption": "Just a little Christmas lights reminder \ud83c\udf84\u2728\n\nBarta Window Washing is out getting homes ready for the season! If you\u2019ve been thinking about having professional Christmas lights installed this year, now\u2019s a great time to get on the schedule.\n\nWe handle everything from install to takedown so you can just enjoy the lights \ud83c\udf85\ud83c\udffc\ud83c\udfe0\n\nSend us a message for a free quote!",
     "permalink": "https://www.instagram.com/p/DeNRMFHlC-N/",
     "timestamp": "2026-10-07T20:56:51+0000"
-  },
-  {
-    "id": "17996620314007671",
-    "image": "assets/img/instagram/17996620314007671.jpg",
-    "type": "VIDEO",
-    "slides": [
-      {
-        "type": "VIDEO",
-        "image": "assets/img/instagram/17996620314007671.jpg"
-      }
-    ],
-    "caption": "Nothing like some clean windows \ud83e\uddfc\ud83e\udd18",
-    "permalink": "https://www.instagram.com/reel/Dc04roSyLaF/",
-    "timestamp": "2026-09-03T13:13:21+0000"
   }
 ]
